@@ -696,10 +696,10 @@ function renderMessage(message) {
   row.className = `message-row ${message.sender === 'user' ? 'user-message' : 'assistant-message'}`;
   const avatar = document.createElement('div');
   avatar.className = `message-avatar ${message.sender === 'user' ? 'user' : 'gemini'}`;
-  avatar.textContent = message.sender === 'user' ? 'VR' : '✦';
+  avatar.textContent = message.sender === 'user' ? 'TSS' : '✦';
   const copy = document.createElement('div');
   const name = document.createElement('strong');
-  name.textContent = message.sender === 'user' ? 'Vaishnavi Ranaware' : 'Gemini';
+  name.textContent = message.sender === 'user' ? 'Technossus' : 'Gemini';
   copy.append(name);
   if (message.sender === 'assistant') {
     if (message.agentName || message.webSearch) {
