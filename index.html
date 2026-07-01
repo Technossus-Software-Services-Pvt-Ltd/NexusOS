@@ -62,8 +62,12 @@
             <label class="field-label" for="instructions">Instructions <span>*</span></label>
             <textarea class="field textarea instructions" id="instructions" placeholder="The system instructions that the agent uses"></textarea>
 
-            <label class="field-label" for="model">Model</label>
-            <div class="select-wrap model-select"><span class="gemini-icon" aria-hidden="true"></span><select class="field" id="model"><option>gemini-3.1-pro-preview</option><option>gemini-2.5-flash</option><option>GPT-4.1</option><option>Claude Sonnet 4</option></select><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></div>
+            <label class="field-label" for="agentModelButton">Model</label>
+            <div class="agent-model-picker agent-model-field" id="agentModelPickerHost">
+              <button class="field agent-model-button" id="agentModelButton" type="button" aria-haspopup="dialog" aria-expanded="false">
+                <span class="gemini-icon" id="agentModelIcon" aria-hidden="true"></span><span id="agentModelText">gemini-2.5-flash</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
+              </button>
+            </div>
 
             <section class="form-section">
               <div class="section-heading"><h2>Capabilities</h2><p>Choose what your agent can do.</p></div>
@@ -93,9 +97,9 @@
       <div class="panel-view" id="advancedView">
         <div class="advanced-header"><button id="backAdvanced" aria-label="Back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><div><h1>Advanced Settings</h1><p>Configure how this agent collaborates.</p></div></div>
         <div class="panel-scroll advanced-scroll">
-          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2M18 5l1 1 2-2"/></svg></span><div><h2>Subagents</h2><p>Delegate focused tasks to other agents.</p></div><label class="switch"><input id="agentSubagents" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Select subagents</button></section>
-          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><path d="M7 7h10M14 4l3 3-3 3M17 17H7M10 14l-3 3 3 3"/></svg></span><div><h2>Agent Handoffs</h2><p>Let this agent transfer conversations.</p></div><label class="switch"><input id="agentHandoffs" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Configure handoffs</button></section>
-          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4a4 4 0 0 0 4-4V5M11 12a4 4 0 0 1 4 4v3"/></svg></span><div><h2>Agent Chain</h2><p>Run agents in a defined sequence.</p></div><label class="switch"><input id="agentChain" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Build agent chain</button></section>
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2M18 5l1 1 2-2"/></svg></span><div><h2>Subagents</h2><p>Delegate focused tasks to other agents.</p></div><label class="switch"><input id="agentSubagents" type="checkbox"><span></span></label></div><div class="agent-relation-summary" id="subagentSummary"></div><button class="outline-button wide" id="selectSubagentsButton" type="button">Select subagents</button></section>
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><path d="M7 7h10M14 4l3 3-3 3M17 17H7M10 14l-3 3 3 3"/></svg></span><div><h2>Agent Handoffs</h2><p>Let this agent transfer conversations.</p></div><label class="switch"><input id="agentHandoffs" type="checkbox"><span></span></label></div><div class="agent-relation-summary" id="handoffSummary"></div><button class="outline-button wide" id="configureHandoffsButton" type="button">Configure handoffs</button></section>
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4a4 4 0 0 0 4-4V5M11 12a4 4 0 0 1 4 4v3"/></svg></span><div><h2>Agent Chain</h2><p>Run agents in a defined sequence.</p></div><label class="switch"><input id="agentChain" type="checkbox"><span></span></label></div><div class="agent-relation-summary chain" id="chainSummary"></div><button class="outline-button wide" id="buildAgentChainButton" type="button">Build agent chain</button></section>
           <section class="advanced-card simple"><h2>Conversation starters</h2><p>Add prompts that help people begin.</p><button class="outline-button wide" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add starter</button></section>
         </div>
       </div>
@@ -216,7 +220,7 @@
         <h2>Hi, how can I help you today?</h2>
         <div class="composer-wrap">
           <form class="composer" id="composer">
-            <textarea id="messageInput" aria-label="Message" placeholder="Message Gemini 2.5 Flash"></textarea>
+            <textarea id="messageInput" aria-label="Message" placeholder="Message Assistant"></textarea>
             <div class="composer-actions">
               <div class="composer-left">
                 <button type="button" aria-label="Attach files" title="Attach files"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button>
@@ -230,7 +234,7 @@
         </div>
       </div>
       <section class="conversation-view" id="conversationView" aria-label="Conversation">
-        <header class="conversation-heading"><div><span class="conversation-gemini">G</span><h1 id="conversationTitle"></h1></div><button id="conversationMenu" aria-label="Conversation options"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></header>
+        <header class="conversation-heading"><div><span class="conversation-gemini model-avatar gemini" id="conversationModelIcon">✦</span><h1 id="conversationTitle"></h1></div><button id="conversationMenu" aria-label="Conversation options"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></header>
         <div class="conversation-scroll" id="conversationMessages"></div>
         <div class="conversation-composer-wrap"><form class="conversation-composer" id="conversationComposer"><textarea id="conversationInput" placeholder="Message Gemini" aria-label="Conversation message"></textarea><div class="conversation-composer-actions"><div><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button><button type="button" aria-label="Message settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button></div><div><button type="button" aria-label="Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="conversation-send" id="conversationSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button></div></div></form><p>LibreChat v0.8.6-rc1 - Every AI for Everyone.</p></div>
       </section>
@@ -343,6 +347,20 @@ Walk through the steps the agent should take.</textarea><small id="newSkillInstr
         </form>
       </section>
     </div>
+    <div class="agent-relation-modal" id="agentRelationModal" aria-hidden="true">
+      <div class="agent-relation-backdrop" data-close-agent-relations></div>
+      <section class="agent-relation-dialog" role="dialog" aria-modal="true" aria-labelledby="agentRelationTitle">
+        <header><div><h2 id="agentRelationTitle">Select Agents</h2><p id="agentRelationDescription">Choose agents for this relationship.</p></div><button type="button" data-close-agent-relations aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+        <label class="agent-relation-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="agentRelationSearch" type="search" placeholder="Search agents..." autocomplete="off"></label>
+        <div class="agent-relation-content">
+          <div class="agent-relation-loading" id="agentRelationLoading"><span></span><p>Loading agents...</p></div>
+          <div class="agent-relation-list" id="agentRelationList"></div>
+          <div class="agent-relation-empty" id="agentRelationEmpty"><span class="empty-agent-icon">A</span><h3 id="agentRelationEmptyTitle">No agents created yet</h3><p id="agentRelationEmptyText">Create agents first.</p><button id="createAgentFromRelation" type="button">Create Agent</button></div>
+        </div>
+        <footer><button class="relation-cancel" type="button" data-close-agent-relations>Cancel</button><button class="relation-save" id="saveAgentRelations" type="button">Save</button></footer>
+      </section>
+    </div>
+
     <div class="add-skills-modal" id="addSkillsModal" aria-hidden="true">
       <div class="add-skills-backdrop" data-close-agent-skills></div>
       <section class="add-skills-dialog" role="dialog" aria-modal="true" aria-labelledby="addSkillsTitle">

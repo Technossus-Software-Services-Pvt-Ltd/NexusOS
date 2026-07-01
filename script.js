@@ -26,16 +26,43 @@ const modelCatalog = {
   assistants: { label: 'Assistants', models: ['project-assistant'] },
   google: { label: 'Google', models: ['gemini-2.5-flash', 'gemini-2.5-pro'] },
   anthropic: { label: 'Anthropic', models: ['claude-sonnet-4'] },
-  'local slm': { label: 'Local SLM', models: ['qwen2.5:7b', 'llama3.2', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'phi3:mini', 'codellama:7b', 'deepseek-coder:6.7b'] }
+  'local slm': { label: 'Local SLM', models: ['qwen2.5:7b', 'llama3.1', 'mistral', 'phi3', 'local-slm-small', 'local-slm-coder'] }
 };
-const ollamaModels = new Set(['qwen2.5:7b', 'llama3.2', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'phi3:mini', 'codellama:7b', 'deepseek-coder:6.7b']);
-let selectedModel = 'gemini-2.5-flash';
+const ollamaModels = new Set(modelCatalog['local slm'].models);
+function getAssistantDisplayName(model) {
+  const modelName = typeof model === 'string' ? model : model?.label || model?.id;
+  if (!modelName) return 'Assistant';
+  return modelName.toLowerCase().includes('gemini') ? 'Gemini' : modelName;
+}
+
+function getModelAvatarType(model, provider = providerForModel(typeof model === 'string' ? model : model?.id)) {
+  const modelName = (typeof model === 'string' ? model : model?.id || '').toLowerCase();
+  if (modelName.includes('gemini')) return 'gemini';
+  if (provider === 'local slm') return 'local';
+  if (provider === 'openai') return 'openai';
+  return 'generic';
+}
+
+function createSelectedModel(modelId) {
+  const providerKey = providerForModel(modelId);
+  return { id: modelId, label: modelId, provider: modelCatalog[providerKey]?.label || 'Other', displayName: getAssistantDisplayName(modelId), avatarType: getModelAvatarType(modelId, providerKey) };
+}
+
+function avatarGlyph(type) {
+  return { gemini: '✦', local: 'L', openai: '◎', generic: 'AI' }[type] || 'AI';
+}
+
+let currentSelectedModel = createSelectedModel('gemini-2.5-flash');
+let agentSelectedModel = createSelectedModel('gemini-2.5-flash');
 const agentState = loadAgentState();
 let agentSkillCatalog = loadSkillCatalog();
 let activeSkillId = null;
 let editingSkillId = null;
 let highlightedSkillId = null;
 let agentDraftSkills = [];
+let agentDraftSubagents = [];
+let agentDraftHandoffs = [];
+let agentDraftChain = [];
 let activeAgentSkillCategory = 'All';
 const defaultAgentTools = [
   ['github','GitHub','Manage repositories, issues, pull requests, and code workflows.','Development','Popular'],['gitlab','GitLab','Connect repositories, merge requests, and CI/CD workflows.','Development','Mock'],['jira','Jira','Track issues, sprint tasks, and project tickets.','Development','Popular'],['linear','Linear','Manage product issues and engineering workflows.','Development','Mock'],
@@ -80,6 +107,8 @@ function closeSidePanel(panel, navButton) {
   createMenu?.setAttribute('aria-expanded', 'false');
   if (panel === agentPanel) closeAddSkillsModal();
   if (panel === agentPanel) {
+    closeModelPicker();
+    closeAgentRelationModal();
     closeAgentToolsModal();
     closeToolConfiguration();
   }
@@ -142,29 +171,50 @@ function showToast(message, type = 'default') {
 const modelDropdown = $('#modelDropdown');
 const modelSelectorButton = $('#modelSelectorButton');
 const modelSearchInput = $('#modelSearchInput');
+const chatModelPickerHost = $('.model-selector-wrap');
+const agentModelButton = $('#agentModelButton');
+let modelPickerTarget = 'chat';
 
 function providerForModel(model) {
   return Object.entries(modelCatalog).find(([, provider]) => provider.models.includes(model))?.[0] || 'google';
 }
 
-function closeModelDropdown() {
+function getModelDisplayName(model) {
+  return typeof model === 'string' ? model : model?.label || model?.id || 'Select a model';
+}
+
+function selectedModelForTarget(target) {
+  return target === 'agent' ? agentSelectedModel : currentSelectedModel;
+}
+
+function closeModelPicker() {
   modelDropdown.classList.remove('open');
+  modelDropdown.classList.remove('model-dropdown-agent');
+  chatModelPickerHost.append(modelDropdown);
   modelSelectorButton.classList.remove('open');
   modelSelectorButton.setAttribute('aria-expanded', 'false');
+  agentModelButton.classList.remove('open');
+  agentModelButton.setAttribute('aria-expanded', 'false');
 }
 
-function updateSelectedModelUI() {
-  $('#selectedModelText').textContent = selectedModel;
-  $('#messageInput').placeholder = `Message ${selectedModel}`;
-  $('#conversationInput').placeholder = `Message ${selectedModel}`;
-  const isLocal = providerForModel(selectedModel) === 'local slm';
-  $('#selectedModelIcon').classList.toggle('local-model-icon', isLocal);
-  $$('.provider-row[data-provider]').forEach(row => row.classList.toggle('selected-provider', row.dataset.provider === providerForModel(selectedModel)));
-  $('#localProviderGroup').classList.toggle('selected-provider', isLocal);
-  $$('.local-model-button').forEach(button => button.classList.toggle('selected', button.dataset.model === selectedModel));
+function updateModelTriggerUI() {
+  $('#selectedModelText').textContent = currentSelectedModel.label;
+  $('#messageInput').placeholder = `Message ${currentSelectedModel.displayName}`;
+  $('#conversationInput').placeholder = `Message ${currentSelectedModel.displayName}`;
+  const isLocal = currentSelectedModel.avatarType === 'local';
+  $('#selectedModelIcon').className = `gemini-icon model-icon-${currentSelectedModel.avatarType}`;
+  const conversationIcon = $('#conversationModelIcon');
+  if (conversationIcon) {
+    conversationIcon.className = `conversation-gemini model-avatar ${currentSelectedModel.avatarType}`;
+    conversationIcon.textContent = avatarGlyph(currentSelectedModel.avatarType);
+  }
+  $('#agentModelText').textContent = getModelDisplayName(agentSelectedModel);
+  $('#agentModelIcon').className = `gemini-icon model-icon-${agentSelectedModel.avatarType}`;
 }
 
-function renderLocalModels() {
+function renderModelPicker(target = modelPickerTarget) {
+  modelPickerTarget = target;
+  const selectedModel = selectedModelForTarget(target);
   const list = $('#localModelList');
   list.replaceChildren();
   modelCatalog['local slm'].models.forEach(model => {
@@ -181,28 +231,47 @@ function renderLocalModels() {
     badge.className = `model-runtime-badge ${ollamaModels.has(model) ? 'ollama' : 'local'}`;
     badge.textContent = ollamaModels.has(model) ? 'OLLAMA' : 'LOCAL';
     trailing.append(badge);
-    if (model === selectedModel) trailing.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>');
+    if (model === selectedModel.id) trailing.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>');
     button.append(name, trailing);
-    button.addEventListener('click', () => switchModel(model));
+    button.addEventListener('click', () => selectModelForTarget(modelPickerTarget, model));
     list.append(button);
   });
-  updateSelectedModelUI();
+  $$('.provider-row[data-provider]').forEach(row => row.classList.toggle('selected-provider', row.dataset.provider === providerForModel(selectedModel.id)));
+  $('#localProviderGroup').classList.toggle('selected-provider', selectedModel.provider === 'Local SLM');
+  $$('.local-model-button').forEach(button => button.classList.toggle('selected', button.dataset.model === selectedModel.id));
+  updateModelTriggerUI();
 }
 
-function switchModel(model) {
-  if (model === selectedModel) {
-    closeModelDropdown();
-    return;
+function selectModelForTarget(target, model) {
+  if (target === 'agent') {
+    agentSelectedModel = createSelectedModel(model);
+    closeModelPicker();
+    renderModelPicker('agent');
+    showToast(`Agent model set to ${agentSelectedModel.label}`, 'success');
+  } else {
+    currentSelectedModel = createSelectedModel(model);
+    closeModelPicker();
+    renderModelPicker('chat');
+    showToast(`Model switched to ${currentSelectedModel.label}`, 'success');
   }
-  closeModelDropdown();
-  modelSelectorButton.classList.add('loading');
-  $('#selectedModelText').textContent = 'Switching…';
-  setTimeout(() => {
-    selectedModel = model;
-    modelSelectorButton.classList.remove('loading');
-    renderLocalModels();
-    showToast(`Model switched to ${selectedModel}`, 'success');
-  }, 450);
+}
+
+function openModelPicker(target, anchorElement) {
+  if (modelDropdown.classList.contains('open') && modelPickerTarget === target) return closeModelPicker();
+  closeModelPicker();
+  modelPickerTarget = target;
+  renderModelPicker(target);
+  if (target === 'agent') {
+    const agentModelField = anchorElement.closest('.agent-model-field');
+    agentModelField.append(modelDropdown);
+    modelDropdown.classList.add('model-dropdown-agent');
+  }
+  modelDropdown.classList.add('open');
+  anchorElement.classList.add('open');
+  anchorElement.setAttribute('aria-expanded', 'true');
+  modelSearchInput.value = '';
+  filterModelDropdown();
+  modelSearchInput.focus();
 }
 
 function filterModelDropdown() {
@@ -230,14 +299,11 @@ function filterModelDropdown() {
 
 modelSelectorButton.addEventListener('click', event => {
   event.stopPropagation();
-  const open = modelDropdown.classList.toggle('open');
-  modelSelectorButton.classList.toggle('open', open);
-  modelSelectorButton.setAttribute('aria-expanded', String(open));
-  if (open) {
-    modelSearchInput.value = '';
-    filterModelDropdown();
-    modelSearchInput.focus();
-  }
+  openModelPicker('chat', modelSelectorButton);
+});
+agentModelButton.addEventListener('click', event => {
+  event.stopPropagation();
+  openModelPicker('agent', agentModelButton);
 });
 modelDropdown.addEventListener('click', event => event.stopPropagation());
 modelSearchInput.addEventListener('input', filterModelDropdown);
@@ -248,16 +314,21 @@ $('#localSlmButton').addEventListener('click', () => {
 });
 $$('.provider-row[data-provider] .provider-main').forEach(button => button.addEventListener('click', () => {
   const provider = button.closest('.provider-row').dataset.provider;
-  showToast(`${modelCatalog[provider].label} provider opened in mock mode`);
+  const firstModel = modelCatalog[provider].models[0];
+  if (firstModel) selectModelForTarget(modelPickerTarget, firstModel);
+  else showToast(`${modelCatalog[provider].label} provider opened in mock mode`);
 }));
 $$('.provider-actions button').forEach(button => button.addEventListener('click', event => {
   event.stopPropagation();
   showToast('Provider settings are frontend-only in this prototype');
 }));
 document.addEventListener('click', event => {
-  if (!event.target.closest('.model-selector-wrap')) closeModelDropdown();
+  if (!modelDropdown.contains(event.target) && !event.target.closest('#modelSelectorButton, #agentModelButton')) closeModelPicker();
 });
-renderLocalModels();
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeModelPicker();
+});
+renderModelPicker('chat');
 
 $('#openAdvanced').addEventListener('click', () => setView('advanced'));
 $('#backAdvanced').addEventListener('click', () => setView('main'));
@@ -695,11 +766,13 @@ function renderMessage(message) {
   const row = document.createElement('div');
   row.className = `message-row ${message.sender === 'user' ? 'user-message' : 'assistant-message'}`;
   const avatar = document.createElement('div');
-  avatar.className = `message-avatar ${message.sender === 'user' ? 'user' : 'gemini'}`;
-  avatar.textContent = message.sender === 'user' ? 'TSS' : '✦';
+  const messageModel = message.modelLabel || message.modelId ? createSelectedModel(message.modelLabel || message.modelId) : currentSelectedModel;
+  const avatarType = message.avatarType || messageModel.avatarType;
+  avatar.className = `message-avatar ${message.sender === 'user' ? 'user' : avatarType}`;
+  avatar.textContent = message.sender === 'user' ? 'TSS' : avatarGlyph(avatarType);
   const copy = document.createElement('div');
   const name = document.createElement('strong');
-  name.textContent = message.sender === 'user' ? 'Technossus' : 'Gemini';
+  name.textContent = message.sender === 'user' ? 'Technossus' : message.assistantName || getAssistantDisplayName(messageModel);
   copy.append(name);
   if (message.sender === 'assistant') {
     if (message.agentName || message.webSearch) {
@@ -737,9 +810,10 @@ function renderConversation() {
   const messages = $('#conversationMessages');
   messages.replaceChildren(...chat.messages.map(renderMessage));
   if (chatState.typingChatId === chat.id) {
+    const typingModel = chatState.typingModel || currentSelectedModel;
     const typing = document.createElement('div');
     typing.className = 'message-row assistant-message typing-row';
-    typing.innerHTML = '<div class="message-avatar gemini">✦</div><div><strong>Gemini</strong><div class="typing-dots"><i></i><i></i><i></i></div></div>';
+    typing.innerHTML = `<div class="message-avatar ${typingModel.avatarType}">${avatarGlyph(typingModel.avatarType)}</div><div><strong>${getAssistantDisplayName(typingModel)}</strong><div class="typing-dots"><i></i><i></i><i></i></div></div>`;
     messages.append(typing);
   }
   chatWelcome.classList.add('skill-hidden');
@@ -774,13 +848,18 @@ function deleteChat(id) {
   showToast('Chat deleted');
 }
 
-function localResponse(text, agent = null) {
+function generateMockResponse(text, selectedModel, agent = null) {
+  const modelName = selectedModel?.label || selectedModel?.id || 'Assistant';
+  const normalizedModelName = modelName.toLowerCase();
   const input = text.toLowerCase();
   let response;
-  if (/\b(hello|hi|hey)\b/.test(input)) response = 'Hello! How can I help you today?';
+  if (normalizedModelName.includes('qwen')) response = `I’m responding as ${modelName}. This is a local SLM mock response generated inside the prototype.`;
+  else if (normalizedModelName.includes('llama')) response = `I’m responding as ${modelName}. This response is mocked locally for the prototype.`;
+  else if (normalizedModelName.includes('mistral') || selectedModel?.provider === 'Local SLM') response = `I’m responding as ${modelName}. This is a local model mock response generated inside the prototype.`;
+  else if (normalizedModelName.includes('gemini') && /\b(hello|hi|hey)\b/.test(input)) response = 'Hello! How can I help you today?';
   else if (/\b(ui|design|spacing|layout|interface)\b/.test(input)) response = 'I can help you refine the UI, improve spacing, and make the prototype feel closer to LibreChat.';
   else if (/\b(code|html|css|javascript|js)\b/.test(input)) response = 'Sure, I can help you structure the HTML, CSS, and JavaScript cleanly.';
-  else response = 'I understand. This is a mock response generated locally for the prototype.';
+  else response = `I’m responding as ${getAssistantDisplayName(selectedModel)}. This is a mock assistant response.`;
   if (agent?.category === 'Developer') response = `Developer perspective: ${response} I’ll prioritize clean structure, maintainability, and safe implementation.`;
   if (agent?.instructions) response += ` This response follows the custom instructions configured for ${agent.name}.`;
   return response;
@@ -801,6 +880,8 @@ function sendChatMessage(text) {
   chat.updatedAt = Date.now();
   chat.group = 'today';
   chatState.typingChatId = chat.id;
+  const responseModel = { ...currentSelectedModel };
+  chatState.typingModel = responseModel;
   saveChatState();
   openWorkspace('chats');
   renderConversation();
@@ -809,9 +890,18 @@ function sendChatMessage(text) {
   setTimeout(() => {
     const responseChat = chatState.chats.find(item => item.id === responseChatId);
     if (!responseChat) return;
-    responseChat.messages.push({ sender: 'assistant', text: localResponse(text, responseAgent), agentName: responseAgent?.name || '', webSearch: Boolean(responseAgent?.webSearch) });
+    responseChat.messages.push({
+      id: `message-${Date.now()}`, sender: 'assistant', role: 'assistant',
+      modelId: responseModel.id, modelLabel: responseModel.label,
+      assistantName: getAssistantDisplayName(responseModel), avatarType: responseModel.avatarType,
+      text: generateMockResponse(text, responseModel, responseAgent), createdAt: new Date().toISOString(),
+      agentName: responseAgent?.name || '', webSearch: Boolean(responseAgent?.webSearch)
+    });
     responseChat.updatedAt = Date.now();
-    if (chatState.typingChatId === responseChatId) chatState.typingChatId = null;
+    if (chatState.typingChatId === responseChatId) {
+      chatState.typingChatId = null;
+      chatState.typingModel = null;
+    }
     saveChatState();
     renderChatHistory();
     if (chatState.selected === responseChatId && chatsPanel.classList.contains('open')) renderConversation();
@@ -1120,14 +1210,18 @@ function setAgentControl(id, value) {
 }
 
 function populateAgentForm(agent) {
-  const values = agent || { name: '', description: '', category: 'General', instructions: '', model: 'gemini-3.1-pro-preview', runCode: false, webSearch: false, fileContext: false, artifacts: false, fileSearch: false, skills: false, assignedSkills: [], selectedTools: [...persistedToolSelection], supportName: '', supportEmail: '', subagents: false, handoffs: false, chain: false };
+  const values = agent || { name: '', description: '', category: 'General', instructions: '', model: 'gemini-2.5-flash', runCode: false, webSearch: false, fileContext: false, artifacts: false, fileSearch: false, skills: false, assignedSkills: [], selectedTools: [...persistedToolSelection], subagentIds: [], handoffAgentIds: [], agentChainIds: [], supportName: '', supportEmail: '', subagents: false, handoffs: false, chain: false };
   agentDraftSkills = [...(values.assignedSkills || [])];
   agentDraftTools = [...(values.selectedTools || [])];
+  agentDraftSubagents = [...(values.subagentIds || [])];
+  agentDraftHandoffs = [...(values.handoffAgentIds || [])];
+  agentDraftChain = [...(values.agentChainIds || [])];
   setAgentControl('agentName', values.name);
   setAgentControl('description', values.description);
   setAgentControl('category', values.category);
   setAgentControl('instructions', values.instructions);
-  setAgentControl('model', values.model);
+  agentSelectedModel = createSelectedModel(values.model || 'gemini-2.5-flash');
+  updateModelTriggerUI();
   setAgentControl('agentRunCode', values.runCode);
   setAgentControl('agentWebSearch', values.webSearch);
   setAgentControl('agentFileContext', values.fileContext);
@@ -1146,16 +1240,17 @@ function populateAgentForm(agent) {
   $('.identity-block').classList.toggle('editing', Boolean(agent));
   renderAssignedAgentSkills();
   renderSelectedAgentTools();
+  renderAgentRelationSummaries();
 }
 
 function gatherAgentForm() {
   return {
     name: $('#agentName').value.trim() || 'Untitled Agent', description: $('#description').value.trim(), category: $('#category').value,
-    instructions: $('#instructions').value.trim(), model: $('#model').value, runCode: $('#agentRunCode').checked,
+    instructions: $('#instructions').value.trim(), model: agentSelectedModel.id, runCode: $('#agentRunCode').checked,
     webSearch: $('#agentWebSearch').checked, fileContext: $('#agentFileContext').checked, artifacts: $('#agentArtifacts').checked,
     fileSearch: $('#agentFileSearch').checked, skills: $('#agentSkills').checked, assignedSkills: [...agentDraftSkills], selectedTools: [...agentDraftTools], supportName: $('#agentSupportName').value.trim(),
     supportEmail: $('#agentSupportEmail').value.trim(), subagents: $('#agentSubagents').checked, handoffs: $('#agentHandoffs').checked,
-    chain: $('#agentChain').checked
+    chain: $('#agentChain').checked, subagentIds: [...agentDraftSubagents], handoffAgentIds: [...agentDraftHandoffs], agentChainIds: [...agentDraftChain]
   };
 }
 
@@ -1184,12 +1279,216 @@ function newAgent() {
 function deleteAgent(id) {
   const wasSelected = agentState.selected === id;
   agentState.agents = agentState.agents.filter(agent => agent.id !== id);
+  agentState.agents.forEach(agent => {
+    agent.subagentIds = (agent.subagentIds || []).filter(agentId => agentId !== id);
+    agent.handoffAgentIds = (agent.handoffAgentIds || []).filter(agentId => agentId !== id);
+    agent.agentChainIds = (agent.agentChainIds || []).filter(agentId => agentId !== id);
+  });
+  agentDraftSubagents = agentDraftSubagents.filter(agentId => agentId !== id);
+  agentDraftHandoffs = agentDraftHandoffs.filter(agentId => agentId !== id);
+  agentDraftChain = agentDraftChain.filter(agentId => agentId !== id);
   if (wasSelected) agentState.selected = null;
   saveAgentState();
   if (wasSelected) populateAgentForm(null);
+  else renderAgentRelationSummaries();
   renderAgentList();
   showToast('Agent deleted');
 }
+
+const agentRelationModal = $('#agentRelationModal');
+const relationConfig = {
+  subagents: { title: 'Select Subagents', description: 'Choose agents that can handle delegated tasks.', empty: 'Create agents first to use them as subagents.', toast: 'Subagents updated' },
+  handoffs: { title: 'Configure Agent Handoffs', description: 'Choose agents that can receive handed-off conversations.', empty: 'Create agents first to configure handoffs.', toast: 'Agent handoffs updated' },
+  chain: { title: 'Build Agent Chain', description: 'Add agents and arrange their execution order.', empty: 'Create agents first to build an agent chain.', toast: 'Agent chain updated' }
+};
+let activeRelationType = null;
+let relationDraftIds = [];
+let relationLoadingTimer = null;
+
+function relationDraftForType(type) {
+  if (type === 'subagents') return agentDraftSubagents;
+  if (type === 'handoffs') return agentDraftHandoffs;
+  return agentDraftChain;
+}
+
+function availableRelationAgents() {
+  return agentState.agents.filter(agent => agent.id !== agentState.selected);
+}
+
+function setRelationDraft(type, ids) {
+  if (type === 'subagents') agentDraftSubagents = [...ids];
+  else if (type === 'handoffs') agentDraftHandoffs = [...ids];
+  else agentDraftChain = [...ids];
+}
+
+function relationSummaryChip(agent, type, index) {
+  const chip = document.createElement('div');
+  chip.className = 'agent-relation-chip';
+  if (type === 'chain') {
+    const order = document.createElement('span');
+    order.className = 'relation-order';
+    order.textContent = String(index + 1);
+    chip.append(order);
+  }
+  const copy = document.createElement('span');
+  copy.innerHTML = `<strong></strong><small></small>`;
+  copy.querySelector('strong').textContent = agent.name;
+  copy.querySelector('small').textContent = agent.category || 'General';
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.setAttribute('aria-label', `Remove ${agent.name}`);
+  remove.textContent = '×';
+  remove.addEventListener('click', () => {
+    const nextIds = relationDraftForType(type).filter(id => id !== agent.id);
+    setRelationDraft(type, nextIds);
+    const toggleId = { subagents: 'agentSubagents', handoffs: 'agentHandoffs', chain: 'agentChain' }[type];
+    if (!nextIds.length) $(`#${toggleId}`).checked = false;
+    renderAgentRelationSummaries();
+  });
+  chip.append(copy, remove);
+  return chip;
+}
+
+function renderAgentRelationSummaries() {
+  const summaries = [
+    ['subagents', '#subagentSummary', agentDraftSubagents],
+    ['handoffs', '#handoffSummary', agentDraftHandoffs],
+    ['chain', '#chainSummary', agentDraftChain]
+  ];
+  summaries.forEach(([type, selector, ids]) => {
+    const container = $(selector);
+    container.replaceChildren();
+    ids.map(id => agentState.agents.find(agent => agent.id === id)).filter(Boolean).forEach((agent, index) => container.append(relationSummaryChip(agent, type, index)));
+    container.classList.toggle('has-items', container.children.length > 0);
+  });
+}
+
+function moveRelationChainItem(agentId, direction) {
+  const index = relationDraftIds.indexOf(agentId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= relationDraftIds.length) return;
+  [relationDraftIds[index], relationDraftIds[target]] = [relationDraftIds[target], relationDraftIds[index]];
+  renderAgentRelationList();
+}
+
+function toggleRelationAgent(agentId) {
+  const selected = relationDraftIds.includes(agentId);
+  relationDraftIds = selected ? relationDraftIds.filter(id => id !== agentId) : [...relationDraftIds, agentId];
+  renderAgentRelationList();
+}
+
+function renderAgentRelationList() {
+  const list = $('#agentRelationList');
+  const query = $('#agentRelationSearch').value.trim().toLowerCase();
+  const available = availableRelationAgents();
+  const ordered = activeRelationType === 'chain'
+    ? [...relationDraftIds.map(id => available.find(agent => agent.id === id)).filter(Boolean), ...available.filter(agent => !relationDraftIds.includes(agent.id))]
+    : available;
+  const matches = ordered.filter(agent => !query || `${agent.name} ${agent.category}`.toLowerCase().includes(query));
+  list.replaceChildren();
+  matches.forEach(agent => {
+    const selected = relationDraftIds.includes(agent.id);
+    const row = document.createElement('article');
+    row.className = 'agent-relation-option';
+    row.classList.toggle('selected', selected);
+    const avatar = document.createElement('span');
+    avatar.className = 'relation-agent-avatar';
+    avatar.textContent = initials(agent.name);
+    const copy = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = agent.name;
+    const category = document.createElement('span');
+    category.textContent = agent.category || 'General';
+    copy.append(name, category);
+    const actions = document.createElement('div');
+    actions.className = 'relation-option-actions';
+    if (activeRelationType === 'chain' && selected) {
+      const index = relationDraftIds.indexOf(agent.id);
+      [['↑', -1, 'Move up'], ['↓', 1, 'Move down']].forEach(([symbol, direction, label]) => {
+        const move = document.createElement('button');
+        move.type = 'button';
+        move.textContent = symbol;
+        move.title = label;
+        move.setAttribute('aria-label', `${label} ${agent.name}`);
+        move.disabled = direction < 0 ? index === 0 : index === relationDraftIds.length - 1;
+        move.addEventListener('click', event => { event.stopPropagation(); moveRelationChainItem(agent.id, direction); });
+        actions.append(move);
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', `Remove ${agent.name}`);
+      remove.addEventListener('click', event => { event.stopPropagation(); toggleRelationAgent(agent.id); });
+      actions.append(remove);
+    } else {
+      const status = document.createElement('span');
+      status.className = 'relation-check';
+      status.textContent = selected ? '✓' : '+';
+      actions.append(status);
+    }
+    row.append(avatar, copy, actions);
+    row.addEventListener('click', () => toggleRelationAgent(agent.id));
+    list.append(row);
+  });
+
+  const empty = $('#agentRelationEmpty');
+  const hasNoSavedAgents = agentState.agents.length === 0;
+  const hasNoOtherAgents = !hasNoSavedAgents && available.length === 0;
+  const showEmpty = hasNoSavedAgents || hasNoOtherAgents || matches.length === 0;
+  empty.classList.toggle('visible', showEmpty);
+  list.hidden = showEmpty;
+  $('#agentRelationEmptyTitle').textContent = hasNoSavedAgents ? 'No agents created yet' : hasNoOtherAgents ? 'No other agents available' : 'No matching agents';
+  $('#agentRelationEmptyText').textContent = hasNoSavedAgents ? relationConfig[activeRelationType].empty : hasNoOtherAgents ? 'Create another agent first.' : 'Try a different search.';
+  $('#createAgentFromRelation').hidden = !hasNoSavedAgents && !hasNoOtherAgents;
+  $('#saveAgentRelations').disabled = hasNoSavedAgents || hasNoOtherAgents;
+}
+
+function openAgentRelationModal(type) {
+  activeRelationType = type;
+  relationDraftIds = [...relationDraftForType(type)];
+  const config = relationConfig[type];
+  $('#agentRelationTitle').textContent = config.title;
+  $('#agentRelationDescription').textContent = config.description;
+  $('#agentRelationSearch').value = '';
+  $('#agentRelationList').replaceChildren();
+  $('#agentRelationEmpty').classList.remove('visible');
+  $('#agentRelationLoading').classList.add('visible');
+  agentRelationModal.classList.add('open');
+  agentRelationModal.setAttribute('aria-hidden', 'false');
+  clearTimeout(relationLoadingTimer);
+  relationLoadingTimer = setTimeout(() => {
+    $('#agentRelationLoading').classList.remove('visible');
+    renderAgentRelationList();
+    if (!agentState.agents.length) showToast('Create agents first');
+    $('#agentRelationSearch').focus();
+  }, 350);
+}
+
+function closeAgentRelationModal() {
+  clearTimeout(relationLoadingTimer);
+  agentRelationModal.classList.remove('open');
+  agentRelationModal.setAttribute('aria-hidden', 'true');
+  $('#agentRelationLoading').classList.remove('visible');
+}
+
+$('#selectSubagentsButton').addEventListener('click', () => openAgentRelationModal('subagents'));
+$('#configureHandoffsButton').addEventListener('click', () => openAgentRelationModal('handoffs'));
+$('#buildAgentChainButton').addEventListener('click', () => openAgentRelationModal('chain'));
+$('#agentRelationSearch').addEventListener('input', renderAgentRelationList);
+$$('[data-close-agent-relations]').forEach(button => button.addEventListener('click', closeAgentRelationModal));
+$('#saveAgentRelations').addEventListener('click', () => {
+  setRelationDraft(activeRelationType, relationDraftIds);
+  const toggleId = { subagents: 'agentSubagents', handoffs: 'agentHandoffs', chain: 'agentChain' }[activeRelationType];
+  $(`#${toggleId}`).checked = relationDraftIds.length > 0;
+  renderAgentRelationSummaries();
+  closeAgentRelationModal();
+  showToast(relationConfig[activeRelationType].toast, 'success');
+});
+$('#createAgentFromRelation').addEventListener('click', () => {
+  closeAgentRelationModal();
+  newAgent();
+  showToast('Create agents first');
+});
 
 createMenu.addEventListener('click', event => {
   event.stopPropagation();
@@ -1696,7 +1995,8 @@ $('#messageInput').addEventListener('keydown', event => {
 
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape') {
-    closeModelDropdown();
+    closeModelPicker();
+    closeAgentRelationModal();
     closeAddSkillsModal();
     closeToolConfiguration();
     closeAgentToolsModal();
