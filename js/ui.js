@@ -42,7 +42,7 @@ export function createMessageElement(message) {
   const avatarEl = document.createElement('div');
   avatarEl.className = 'message-avatar';
   avatarEl.setAttribute('aria-hidden', 'true');
-  avatarEl.textContent = isUser ? 'VR' : 'AI';
+  avatarEl.textContent = isUser ? 'Technossus' : 'AI';
 
   const bodyEl = document.createElement('div');
   bodyEl.className = 'message-body';
