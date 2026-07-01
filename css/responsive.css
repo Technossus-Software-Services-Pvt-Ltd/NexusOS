@@ -1,0 +1,63 @@
+/* responsive.css — mobile layout ≤768px */
+
+@media (max-width: 768px) {
+
+  /* Chat panel becomes off-canvas overlay */
+  .chat-panel {
+    position: fixed;
+    top: 0;
+    left: var(--rail-width);
+    height: 100vh;
+    z-index: 45;
+    transform: translateX(-110%);
+    transition: transform .22s cubic-bezier(.4,0,.2,1);
+    box-shadow: var(--shadow-xl);
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .chat-panel.mobile-open {
+    transform: translateX(0);
+  }
+
+  .nav-mask { display: block; }
+
+  /* Welcome greeting: smaller on mobile */
+  .greeting-text { font-size: 22px; }
+  .greeting-row  { flex-direction: column; gap: var(--sp-2); }
+
+  /* Composer padding */
+  .composer-area  { padding: 0 var(--sp-3) 0; }
+  .messages-inner { padding: var(--sp-4) var(--sp-3) var(--sp-4); }
+
+  /* Messages wider */
+  .message-body { max-width: 92%; }
+
+  /* Settings modal full-screen bottom sheet */
+  .modal-panel {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    align-self: flex-end;
+  }
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal-body { flex-direction: column; }
+  .settings-tabs {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    overflow-x: auto;
+    padding: var(--sp-2) var(--sp-3);
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .settings-tab-btn { white-space: nowrap; flex-shrink: 0; }
+  .settings-content { padding: var(--sp-4); }
+
+  /* Composer toolbar wraps */
+  .composer-toolbar { flex-wrap: wrap; }
+
+  /* Topbar actions */
+  .topbar { padding: 0 var(--sp-3); }
+}

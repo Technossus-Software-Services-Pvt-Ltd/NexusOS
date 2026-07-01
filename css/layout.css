@@ -1,0 +1,473 @@
+/* layout.css — three-column app shell */
+
+/* ── Root shell ────────────────────────────────────────────────── */
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  ICON RAIL (leftmost narrow column)                              */
+/* ════════════════════════════════════════════════════════════════ */
+.icon-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--rail-width);
+  min-width: var(--rail-width);
+  height: 100vh;
+  background: var(--bg-rail);
+  border-right: 1px solid var(--border-subtle);
+  padding: var(--sp-3) 0;
+  flex-shrink: 0;
+  z-index: var(--z-panel);
+  overflow: hidden;
+}
+
+.rail-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1;
+}
+
+.rail-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}
+
+.rail-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  color: var(--icon-inactive);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--tr-base), background-color var(--tr-base);
+  position: relative;
+  flex-shrink: 0;
+}
+.rail-icon-btn:hover {
+  color: var(--icon-hover);
+  background: var(--bg-hover);
+}
+.rail-icon-btn.active {
+  color: var(--icon-active);
+}
+.rail-icon-btn svg { pointer-events: none; flex-shrink: 0; }
+
+/* User avatar in rail */
+.rail-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background: var(--avatar-bg);
+  color: var(--avatar-text);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  transition: opacity var(--tr-base);
+}
+.rail-avatar:hover { opacity: 0.85; }
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  CHAT PANEL (second column)                                      */
+/* ════════════════════════════════════════════════════════════════ */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  min-width: var(--panel-width);
+  height: 100vh;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width .22s ease, min-width .22s ease, opacity .22s ease;
+}
+
+.chat-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+/* Chat panel header */
+.chat-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px var(--sp-4) 12px var(--sp-4);
+  flex-shrink: 0;
+}
+
+.chat-panel-title {
+  font-size: var(--fz-base);
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.btn-collapse-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--icon-inactive);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--tr-base), background-color var(--tr-base);
+}
+.btn-collapse-panel:hover {
+  color: var(--icon-hover);
+  background: var(--bg-hover);
+}
+
+/* Chat list scroll area */
+.chat-list-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--sp-2);
+}
+
+/* Group labels */
+.sidebar-group-label {
+  font-size: var(--fz-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: var(--sp-3) var(--sp-2) var(--sp-1) var(--sp-2);
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* Empty state in panel */
+.panel-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10) var(--sp-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fz-sm);
+}
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  MAIN AREA (right, largest column)                               */
+/* ════════════════════════════════════════════════════════════════ */
+.main-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  background: var(--bg-main);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Topbar ────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--sp-4);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: var(--fz-base);
+  font-weight: 500;
+  transition: background-color var(--tr-base);
+}
+.model-pill:hover { background: var(--bg-hover); }
+
+.model-pill-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.topbar-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  color: var(--icon-inactive);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--tr-base), background-color var(--tr-base);
+}
+.topbar-action-btn:hover {
+  color: var(--icon-hover);
+  background: var(--bg-hover);
+}
+
+.topbar-app-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Messages area ─────────────────────────────────────────────── */
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+.messages-inner {
+  max-width: var(--composer-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-6) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* ── Welcome / greeting state ──────────────────────────────────── */
+.welcome-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  min-height: 0;
+}
+
+.greeting-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+
+.greeting-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.greeting-text {
+  font-size: var(--fz-greeting);
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* ── Composer area ─────────────────────────────────────────────── */
+.composer-area {
+  flex-shrink: 0;
+  padding: 0 var(--sp-6) 0;
+}
+
+.composer-inner {
+  max-width: var(--composer-max-width);
+  margin: 0 auto;
+}
+
+/* Attachment chips row */
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 0 var(--sp-2);
+}
+.composer-attachments:empty { display: none; }
+
+/* The rounded composer box */
+.composer-box {
+  background: var(--bg-composer);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  transition: border-color .16s ease;
+}
+.composer-box:focus-within {
+  border-color: var(--border-medium);
+}
+
+.composer-textarea-row {
+  padding: 18px 20px 4px;
+}
+
+.composer-textarea {
+  width: 100%;
+  min-height: 28px;
+  max-height: 200px;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fz-md);
+  line-height: 1.5;
+  outline: none;
+  overflow-y: auto;
+}
+.composer-textarea::placeholder { color: var(--text-muted); }
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 12px 12px;
+}
+
+.composer-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1;
+}
+
+/* Skills-style pill button */
+.btn-skills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-skills-btn);
+  color: var(--text-primary);
+  font-size: var(--fz-sm);
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--tr-base);
+  white-space: nowrap;
+}
+.btn-skills:hover { background: var(--bg-hover); }
+
+/* Composer icon button */
+.composer-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  color: var(--icon-inactive);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--tr-base), background-color var(--tr-base);
+  flex-shrink: 0;
+}
+.composer-icon-btn:hover {
+  color: var(--icon-hover);
+  background: var(--bg-hover);
+}
+
+/* Send button */
+.btn-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--bg-send-btn);
+  color: var(--text-primary);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: opacity var(--tr-base), background-color var(--tr-base);
+}
+.btn-send:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-send:not(:disabled):hover { opacity: 0.8; }
+
+.btn-send.stop {
+  background: var(--accent-danger);
+}
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.main-footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  font-size: var(--fz-xs);
+  color: var(--text-muted);
+}
+
+.main-footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color var(--tr-base), color var(--tr-base);
+}
+.main-footer a:hover {
+  color: var(--text-secondary);
+  text-decoration-color: var(--text-secondary);
+}
+
+/* ── Nav mask ──────────────────────────────────────────────────── */
+.nav-mask {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.nav-mask.active { opacity: 1; pointer-events: all; }

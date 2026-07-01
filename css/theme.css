@@ -1,0 +1,17 @@
+/* theme.css — smooth transitions for theme swapping */
+
+body,
+.icon-rail,
+.chat-panel,
+.main-area,
+.topbar,
+.composer-box,
+.conversation-item,
+.modal-overlay,
+.modal-panel,
+.dropdown-panel,
+.profile-popover,
+.rail-icon-btn,
+.chat-list-container {
+  transition: background-color .22s ease, color .22s ease, border-color .22s ease;
+}

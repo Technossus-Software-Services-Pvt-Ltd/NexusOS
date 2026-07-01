@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0b0c">
+  <title>LibreChat — Agent Builder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="icon-rail" aria-label="Main navigation">
+      <div class="rail-group">
+        <button class="rail-button brand-mark" aria-label="LibreChat home" data-tooltip="Home">
+          <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 2.5 24 8v12l-10 5.5L4 20V8l10-5.5Z"/><path d="m9 11 5-2.8 5 2.8v6l-5 2.8L9 17v-6Z"/></svg>
+        </button>
+        <button class="rail-button" id="newChatButton" aria-label="New chat" data-tooltip="New chat"><svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 3h5v5M10 14 21 3"/></svg></button>
+        <button class="rail-button" id="chatsNav" aria-label="Chats" data-tooltip="Chats"><svg viewBox="0 0 24 24"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9Z"/></svg></button>
+        <button class="rail-button active" id="agentsNav" aria-label="Agents" data-tooltip="Agents"><svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 0-4 4v2H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h1v3h10v-3h1a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-2V6a4 4 0 0 0-4-4Z"/><path d="M8 13h.01M16 13h.01M9 17h6"/></svg></button>
+        <button class="rail-button" id="skillsNav" aria-label="Skills" data-tooltip="Skills"><svg viewBox="0 0 24 24"><path d="M14 3a3 3 0 0 0-3 3v1H8a3 3 0 1 0 0 6h3v3a3 3 0 1 0 6 0v-3h1a3 3 0 1 0 0-6h-1V6a3 3 0 0 0-3-3Z"/></svg></button>
+        <button class="rail-button" id="promptsNav" aria-label="Prompts" data-tooltip="Prompts"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg></button>
+        <button class="rail-button" id="memoryNav" aria-label="Memory" data-tooltip="Memory"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-5 2.2A3.5 3.5 0 0 0 4 13a3 3 0 0 0 3 4.8A3 3 0 0 0 12 20V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 5 2.2A3.5 3.5 0 0 1 20 13a3 3 0 0 1-3 4.8A3 3 0 0 1 12 20V7a3 3 0 0 1 3-3Z"/><path d="M8 9h4M12 14H8M16 9h-4M12 14h4"/></svg></button>
+        <button class="rail-button" aria-label="Bookmarks" data-tooltip="Bookmarks"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg></button>
+      </div>
+      <div class="rail-group rail-bottom">
+        <button class="rail-button" id="settingsNav" aria-label="Model settings" data-tooltip="Model settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button>
+        <button class="profile-avatar" aria-label="Account">VR</button>
+      </div>
+    </nav>
+
+    <aside class="agent-panel" id="agentPanel">
+      <header class="panel-header">
+        <div class="create-menu-wrap">
+          <button class="create-menu" id="createMenu" aria-expanded="false"><span id="agentMenuLabel">Create New Agent</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button>
+          <div class="menu-popover agent-menu-popover" id="menuPopover">
+            <label class="agent-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="agentSearchInput" type="search" placeholder="Search agents by name" autocomplete="off"></label>
+            <button class="new-agent-option" id="newAgentOption" type="button"><span class="agent-list-avatar plus">+</span><span>Create New Agent</span></button>
+            <div class="saved-agent-list" id="savedAgentList"></div><p class="agent-search-empty" id="agentSearchEmpty">No agents found</p>
+          </div>
+        </div>
+        <button class="close-panel" id="closePanel" aria-label="Close agent panel"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+
+      <div class="panel-view active" id="mainView">
+        <div class="panel-scroll">
+          <section class="identity-block">
+            <button class="agent-avatar" aria-label="Add agent avatar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+            <div><h1>Create an agent</h1><p>Build a custom AI assistant for your workflow.</p></div>
+          </section>
+          <form id="agentForm" novalidate>
+            <label class="field-label" for="agentName">Name</label>
+            <input class="field" id="agentName" placeholder="Optional: The name of the agent" maxlength="80">
+            <div class="field-meta"><span></span><span id="nameCount">0 / 80</span></div>
+
+            <label class="field-label" for="description">Description</label>
+            <textarea class="field textarea small" id="description" placeholder="Optional: Describe your Agent here" maxlength="200"></textarea>
+            <div class="field-meta"><span>Shown when selecting this agent</span><span id="descriptionCount">0 / 200</span></div>
+
+            <label class="field-label" for="category">Category</label>
+            <div class="select-wrap"><select class="field" id="category"><option>General</option><option>Developer</option><option>Writing</option><option>Research</option><option>Support</option><option>Custom</option></select><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></div>
+
+            <label class="field-label" for="instructions">Instructions <span>*</span></label>
+            <textarea class="field textarea instructions" id="instructions" placeholder="The system instructions that the agent uses"></textarea>
+
+            <label class="field-label" for="model">Model</label>
+            <div class="select-wrap model-select"><span class="gemini-icon" aria-hidden="true"></span><select class="field" id="model"><option>gemini-3.1-pro-preview</option><option>gemini-2.5-flash</option><option>GPT-4.1</option><option>Claude Sonnet 4</option></select><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></div>
+
+            <section class="form-section">
+              <div class="section-heading"><h2>Capabilities</h2><p>Choose what your agent can do.</p></div>
+              <div class="capability-list">
+                <div class="capability"><div><h3>Run Code</h3><p>Allow your agent to execute code.</p></div><label class="switch"><input id="agentRunCode" type="checkbox" data-upload="codeUpload"><span></span></label></div>
+                <button class="upload-button" id="codeUpload" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 17V3m-5 5 5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Upload to Code Environment</button>
+                <div class="capability"><div><h3>Web Search</h3><p>Search the web for current information.</p></div><label class="switch"><input id="agentWebSearch" type="checkbox"><span></span></label></div>
+                <div class="capability"><div><h3>File Context</h3><p>Give the agent access to uploaded files.</p></div><label class="switch"><input id="agentFileContext" type="checkbox" data-upload="contextUpload"><span></span></label></div>
+                <button class="upload-button" id="contextUpload" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 17V3m-5 5 5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Upload File Context</button>
+                <div class="capability"><div><h3>Artifacts</h3><p>Create interactive documents and code.</p></div><label class="switch"><input id="agentArtifacts" type="checkbox"><span></span></label></div>
+                <div class="capability"><div><h3>File Search</h3><p>Search and retrieve content from files.</p></div><label class="switch"><input id="agentFileSearch" type="checkbox" data-upload="fileSearchUpload"><span></span></label></div>
+                <button class="upload-button" id="fileSearchUpload" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 17V3m-5 5 5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Upload Search Files</button>
+                <div class="capability"><div><h3>Skills</h3><p>Enable reusable specialized skills.</p></div><label class="switch"><input id="agentSkills" type="checkbox"><span></span></label></div>
+                <button class="outline-button agent-add-skills" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Skills</button>
+              </div>
+            </section>
+
+            <section class="form-section compact-section"><h2>Tools</h2><button class="outline-button" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Tools</button></section>
+            <section class="form-section compact-section"><h2>Actions</h2><button class="outline-button" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Actions</button></section>
+            <section class="form-section compact-section"><h2>Support Contact</h2><p class="section-copy">Let people know where to get help with this agent.</p><div class="support-contact-grid"><input class="field" id="agentSupportName" type="text" placeholder="Contact name"><input class="field" id="agentSupportEmail" type="email" placeholder="support@example.com"></div></section>
+            <button class="advanced-button" id="openAdvanced" type="button"><span><svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>Advanced Settings</span><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          </form>
+        </div>
+      </div>
+
+      <div class="panel-view" id="advancedView">
+        <div class="advanced-header"><button id="backAdvanced" aria-label="Back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><div><h1>Advanced Settings</h1><p>Configure how this agent collaborates.</p></div></div>
+        <div class="panel-scroll advanced-scroll">
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2M18 5l1 1 2-2"/></svg></span><div><h2>Subagents</h2><p>Delegate focused tasks to other agents.</p></div><label class="switch"><input id="agentSubagents" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Select subagents</button></section>
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><path d="M7 7h10M14 4l3 3-3 3M17 17H7M10 14l-3 3 3 3"/></svg></span><div><h2>Agent Handoffs</h2><p>Let this agent transfer conversations.</p></div><label class="switch"><input id="agentHandoffs" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Configure handoffs</button></section>
+          <section class="advanced-card"><div class="advanced-card-heading"><span class="card-icon"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4a4 4 0 0 0 4-4V5M11 12a4 4 0 0 1 4 4v3"/></svg></span><div><h2>Agent Chain</h2><p>Run agents in a defined sequence.</p></div><label class="switch"><input id="agentChain" type="checkbox"><span></span></label></div><button class="outline-button wide" type="button">Build agent chain</button></section>
+          <section class="advanced-card simple"><h2>Conversation starters</h2><p>Add prompts that help people begin.</p><button class="outline-button wide" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add starter</button></section>
+        </div>
+      </div>
+
+      <footer class="panel-footer"><button class="create-button" id="createAgent" type="button">Create</button></footer>
+    </aside>
+
+    <aside class="chats-panel" id="chatsPanel" aria-label="Chats">
+      <header class="chats-panel-header">
+        <div class="chats-panel-title"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg><h1>Chats</h1></div>
+        <button id="collapseChats" aria-label="Collapse chats" aria-expanded="true"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+      </header>
+      <div class="chats-panel-content" id="chatHistoryGroups">
+        <section class="chat-history-group"><h2 class="chat-time-group">Today</h2><div id="todayChats"></div></section>
+        <section class="chat-history-group"><h2 class="chat-time-group">Previous 7 days</h2><div id="previousChats"></div></section>
+      </div>
+    </aside>
+
+    <aside class="skills-panel" id="skillsPanel" aria-label="Skills library">
+      <header class="skills-panel-header">
+        <h1>Skills</h1>
+        <div class="skills-header-actions">
+          <button id="skillSearchButton" aria-label="Search skills"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+          <button id="createSkillButton" aria-label="Create skill"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="skills-close" id="closeSkills" aria-label="Close skills"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+      </header>
+      <div class="skill-search-wrap" id="skillSearchWrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input id="skillSearchInput" type="search" placeholder="Search skills" autocomplete="off">
+      </div>
+      <div class="skills-list">
+        <button class="skills-group-heading" id="skillsGroupToggle" aria-expanded="true"><svg class="group-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><span>My Skills</span><span class="skill-count">1</span></button>
+        <div class="skills-group" id="skillsGroup">
+          <button class="skill-list-item" id="developmentSkill" data-skill-name="deeloping-guide">
+            <span class="skill-file-icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></span>
+            <span>deeloping-guide</span>
+          </button>
+          <p class="skills-empty" id="skillsEmpty">No matching skills</p>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="prompts-panel" id="promptsPanel" aria-label="Prompts library">
+      <header class="prompts-toolbar">
+        <button class="prompt-filter-button" id="promptFilterButton" aria-label="Toggle prompt filters" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/></svg></button>
+        <label class="prompt-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="promptSearchInput" type="search" placeholder="Filter prompts by name" autocomplete="off"></label>
+        <button class="prompt-add-button" id="createPromptButton" aria-label="Create prompt"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="prompts-close" id="closePrompts" aria-label="Close prompts"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <label class="send-prompts-option"><input id="sendPromptsOnSelect" type="checkbox" checked><span class="checkmark"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></svg></span><span>Send prompts on select</span></label>
+      <div class="prompts-list-area" id="promptsListArea">
+        <div class="prompts-empty" id="promptsEmpty">
+          <span class="empty-document"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h4"/></svg></span>
+          <h2>No prompts yet</h2><p>Create your first prompt to get started</p>
+        </div>
+        <div class="prompt-items" id="promptItems"></div>
+        <p class="prompt-no-results" id="promptNoResults">No matching prompts</p>
+      </div>
+      <footer class="prompts-pagination"><button type="button" disabled><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>Prev</button><span id="promptPage">1</span><button type="button" disabled>Next<svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button></footer>
+    </aside>
+
+    <aside class="memory-panel" id="memoryPanel" aria-label="Memory">
+      <header class="memory-toolbar">
+        <label class="memory-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="memorySearchInput" type="search" placeholder="Filter memories..." autocomplete="off"></label>
+        <button class="memory-add-button" id="createMemoryButton" aria-label="Create memory"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="memory-close" id="closeMemory" aria-label="Close memory"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="memory-options"><label class="use-memory-option"><span>Use memory</span><input id="useMemory" type="checkbox" checked><span class="checkmark"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></svg></span></label></div>
+      <div class="memory-list-area">
+        <div class="memory-empty" id="memoryEmpty"><span class="memory-empty-icon"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-5 2.2A3.5 3.5 0 0 0 4 13a3 3 0 0 0 3 4.8A3 3 0 0 0 12 20V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 5 2.2A3.5 3.5 0 0 1 20 13a3 3 0 0 1-3 4.8A3 3 0 0 1 12 20V7a3 3 0 0 1 3-3Z"/><path d="M8 9h4M16 9h-4M8 14h8"/></svg></span><h2>No memories yet</h2><p>No memories. Create them manually or prompt the AI to remember something</p></div>
+        <div class="memory-items" id="memoryItems"></div>
+        <p class="memory-no-results" id="memoryNoResults">No matching memories</p>
+      </div>
+    </aside>
+
+    <aside class="settings-panel" id="settingsPanel" aria-label="Model parameters">
+      <header class="settings-panel-header"><div><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg><h1>Model Parameters</h1></div><button id="closeSettings" aria-label="Close settings"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <form class="settings-form" id="settingsForm">
+        <div class="settings-scroll">
+          <label class="settings-field"><span>Custom Name</span><input id="settingCustomName" data-setting="customName" type="text" placeholder="Set a custom name for the AI"></label>
+          <label class="settings-field"><span>Custom Instructions</span><textarea id="settingInstructions" data-setting="instructions" placeholder="Set custom instructions to include in System Message. Default: none"></textarea></label>
+          <div class="settings-grid"><label class="settings-field"><span>Max Context Tokens</span><input id="settingContextTokens" data-setting="contextTokens" type="number"></label><label class="settings-field"><span>Max Output Tokens</span><input id="settingOutputTokens" data-setting="outputTokens" type="number"></label></div>
+          <label class="settings-range"><span class="settings-label-row"><span>Temperature</span><output id="temperatureValue">1.00</output></span><input id="settingTemperature" data-setting="temperature" type="range" min="0" max="2" step="0.01"></label>
+          <label class="settings-range"><span class="settings-label-row"><span>Top P</span><output id="topPValue">0.95</output></span><input id="settingTopP" data-setting="topP" type="range" min="0" max="1" step="0.01"></label>
+          <label class="settings-range"><span class="settings-label-row"><span>Top K</span><output id="topKValue">40</output></span><input id="settingTopK" data-setting="topK" type="range" min="1" max="100" step="1"></label>
+          <div class="settings-toggle-row"><span>Resend Files</span><label class="switch"><input id="settingResendFiles" data-setting="resendFiles" type="checkbox"><span></span></label></div>
+          <div class="settings-toggle-row"><span>Thinking</span><label class="switch"><input id="settingThinking" data-setting="thinking" type="checkbox"><span></span></label></div>
+          <div class="settings-grid"><label class="settings-field"><span>Thinking Budget</span><input id="settingThinkingBudget" data-setting="thinkingBudget" type="text" placeholder="Auto"></label><label class="settings-range compact"><span class="settings-label-row"><span>Thinking Level</span><output id="thinkingLevelValue">Auto</output></span><input id="settingThinkingLevel" data-setting="thinkingLevel" type="range" min="0" max="3" step="1"></label></div>
+          <div class="settings-toggle-row"><span>Grounding with Google Search</span><label class="switch"><input id="settingGrounding" data-setting="grounding" type="checkbox"><span></span></label></div>
+          <label class="settings-field"><span>File Token Limit</span><input id="settingFileTokenLimit" data-setting="fileTokenLimit" type="text" placeholder="System"></label>
+        </div>
+        <footer class="settings-actions"><button class="settings-reset" id="resetSettings" type="button"><svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18 10a7 7 0 0 0-12-3l-2 4M6 14a7 7 0 0 0 12 3l2-4"/></svg>Reset Model Parameters</button><button class="settings-save" type="submit">Save As Preset</button></footer>
+      </form>
+    </aside>
+
+    <main class="chat-main">
+      <header class="chat-header">
+        <button class="mobile-agents" id="openPanel" aria-label="Open agent builder"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="model-selector-wrap">
+          <button class="model-button" id="modelSelectorButton" aria-expanded="false"><span class="gemini-icon" id="selectedModelIcon"></span><span id="selectedModelText">gemini-2.5-flash</span><svg class="model-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button>
+          <section class="model-dropdown" id="modelDropdown" aria-label="Choose a model">
+            <label class="model-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="modelSearchInput" type="search" placeholder="Search models..." autocomplete="off"></label>
+            <div class="provider-list" id="providerList">
+              <div class="provider-row" data-provider="openai"><button class="provider-main" type="button"><span class="provider-icon openai-icon">◎</span><span>OpenAI</span></button><span class="provider-actions"><button type="button" aria-label="OpenAI settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1-2-4-2 1a7 7 0 0 0-2-1l-.3-2h-5l-.3 2a7 7 0 0 0-2 1l-2-1-2 4 2 1a7 7 0 0 0 0 2l-2 1 2 4 2-1a7 7 0 0 0 2 1l.3 2h5l.3-2a7 7 0 0 0 2-1l2 1 2-4-2-1a7 7 0 0 0 .1-1Z"/></svg></button><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="provider-row" data-provider="my agents"><button class="provider-main" type="button"><span class="provider-icon agents-icon">A</span><span>My Agents</span></button><span class="provider-actions"><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="provider-row" data-provider="assistants"><button class="provider-main" type="button"><span class="provider-icon assistants-icon">✦</span><span>Assistants</span></button><span class="provider-actions"><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="provider-row" data-provider="google"><button class="provider-main" type="button"><span class="provider-icon google-icon">G</span><span>Google</span></button><span class="provider-actions"><button type="button" aria-label="Google settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1-2-4-2 1a7 7 0 0 0-2-1l-.3-2h-5l-.3 2a7 7 0 0 0-2 1l-2-1-2 4 2 1a7 7 0 0 0 0 2l-2 1 2 4 2-1a7 7 0 0 0 2 1l.3 2h5l.3-2a7 7 0 0 0 2-1l2 1 2-4-2-1a7 7 0 0 0 .1-1Z"/></svg></button><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="provider-row" data-provider="anthropic"><button class="provider-main" type="button"><span class="provider-icon anthropic-icon">AI</span><span>Anthropic</span></button><span class="provider-actions"><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="provider-group" id="localProviderGroup" data-provider="local slm">
+                <div class="provider-row"><button class="provider-main" id="localSlmButton" type="button" aria-expanded="false"><span class="provider-icon local-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="13" rx="2"/><path d="M8 21h8M12 18v3M8 9h8M8 13h5"/></svg></span><span>Local SLM</span></button><span class="provider-actions"><span class="local-badge">LOCAL</span><svg class="provider-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div>
+                <div class="local-model-list" id="localModelList"></div>
+              </div>
+              <p class="model-empty" id="modelSearchEmpty">No matching providers or models</p>
+            </div>
+          </section>
+        </div>
+        <div class="chat-top-actions"><button aria-label="Share chat"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/></svg></button><button class="libre-spark" aria-label="LibreChat menu"><span></span><span></span><span></span><span></span></button></div>
+      </header>
+      <div class="chat-content" id="chatWelcome">
+        <h2>Good morning, Vaishnavi Ranaware</h2>
+        <div class="composer-wrap">
+          <form class="composer" id="composer">
+            <textarea id="messageInput" aria-label="Message" placeholder="Message Gemini 2.5 Flash"></textarea>
+            <div class="composer-actions">
+              <div class="composer-left">
+                <button type="button" aria-label="Attach files" title="Attach files"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button>
+                <button type="button" aria-label="Chat settings" title="Chat settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button>
+                <button type="button" class="skills-button"><svg viewBox="0 0 24 24"><path d="m12 3 2.2 4.8L19 10l-4.8 2.2L12 17l-2.2-4.8L5 10l4.8-2.2L12 3Z"/></svg>Skills</button>
+              </div>
+              <button class="send-button" type="submit" aria-label="Send message"><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button>
+            </div>
+          </form>
+          <p class="footer-note">LibreChat can make mistakes. Check important info.</p>
+        </div>
+      </div>
+      <section class="conversation-view" id="conversationView" aria-label="Conversation">
+        <header class="conversation-heading"><div><span class="conversation-gemini">G</span><h1 id="conversationTitle"></h1></div><button id="conversationMenu" aria-label="Conversation options"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></header>
+        <div class="conversation-scroll" id="conversationMessages"></div>
+        <div class="conversation-composer-wrap"><form class="conversation-composer" id="conversationComposer"><textarea id="conversationInput" placeholder="Message Gemini" aria-label="Conversation message"></textarea><div class="conversation-composer-actions"><div><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button><button type="button" aria-label="Message settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button></div><div><button type="button" aria-label="Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="conversation-send" id="conversationSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button></div></div></form><p>LibreChat v0.8.6-rc1 - Every AI for Everyone.</p></div>
+      </section>
+      <section class="skill-detail" id="skillDetail" aria-labelledby="skillDetailTitle">
+        <div class="skill-detail-inner">
+          <header class="skill-detail-header">
+            <div class="skill-title-group">
+              <span class="skill-detail-icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></span>
+              <div><h1 id="skillDetailTitle">deeloping-guide</h1><div class="skill-meta"><span>You</span><i></i><span>Jun 29, 2026</span></div></div>
+            </div>
+            <label class="switch skill-enabled" title="Enable skill"><input id="skillEnabled" type="checkbox" checked><span></span></label>
+          </header>
+          <div class="skill-description-block">
+            <h2>Description</h2>
+            <p id="skillDescriptionText">You are a developer agent responsible for understanding requirements, planning implementation, writing clean code, debugging issues, and improving existing systems safely.</p>
+          </div>
+          <hr>
+          <div class="skill-instructions-wrap">
+            <p id="skillInstructionsText">Understand user requirements clearly before implementation. Break complex tasks into small, actionable steps. Write readable, maintainable, and production-ready code. Follow the existing project structure, naming conventions, and coding style. Avoid unnecessary changes outside the requested scope. Identify edge cases, risks, and possible failure points. Debug errors using logs, stack traces, and code flow analysis. Refactor code only when it improves clarity, safety, or maintainability. Add meaningful comments where logic may be difficult to understand. Suggest improvements without over-engineering the solution.</p>
+          </div>
+          <div class="skill-detail-actions">
+            <button class="edit-skill-button" id="editSkillButton"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"/></svg>Edit</button>
+            <div class="view-actions">
+              <button class="selected" id="previewSkillButton" aria-label="Preview skill" title="Preview"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+              <button id="codeSkillButton" aria-label="View source" title="View source"><svg viewBox="0 0 24 24"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="prompt-create-view" id="promptCreateView" aria-label="Create prompt">
+        <form class="prompt-form" id="promptForm" novalidate>
+          <header class="prompt-form-header">
+            <input id="promptName" type="text" placeholder="Prompt Name*" maxlength="80" aria-label="Prompt name">
+            <div class="prompt-dropdown-wrap">
+              <button class="prompt-dropdown-button" id="promptCategoryButton" type="button" aria-expanded="false"><span id="selectedCategory">Category</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button>
+              <div class="prompt-dropdown" id="promptCategoryMenu"><button type="button">General</button><button type="button">Development</button><button type="button">Writing</button><button type="button">Research</button></div>
+            </div>
+          </header>
+          <div class="prompt-text-heading"><label for="promptText">Text*</label><div class="prompt-dropdown-wrap"><button class="special-variables-button" id="specialVariablesButton" type="button" aria-expanded="false">Special variables<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button><div class="prompt-dropdown variables-menu" id="specialVariablesMenu"><button type="button">{{current_date}}</button><button type="button">{{current_user}}</button><button type="button">{{clipboard}}</button></div></div></div>
+          <textarea id="promptText" placeholder="Prompt input" required></textarea>
+          <div class="prompt-form-row"><input id="promptDescription" type="text" maxlength="120" placeholder="Optional: Enter a description to display for the prompt"><span id="promptDescriptionCount">0/120</span></div>
+          <div class="prompt-form-row"><input id="promptCommand" type="text" maxlength="56" placeholder="Optional: Enter a command for the prompt or name will be used"><span id="promptCommandCount">0/56</span></div>
+          <div class="prompt-submit-row"><button class="prompt-cancel-button" id="cancelPromptButton" type="button">Cancel</button><button class="create-prompt-submit" type="submit">Create Prompt</button></div>
+        </form>
+      </section>
+      <section class="prompt-detail-view" id="promptDetailView" aria-label="Selected prompt details">
+        <div class="prompt-detail-form">
+          <header class="prompt-detail-header">
+            <h1 id="promptDetailName"></h1>
+            <div class="prompt-dropdown-wrap">
+              <button class="prompt-dropdown-button" id="detailCategoryButton" type="button" aria-expanded="false"><span id="detailCategory">Category</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button>
+              <div class="prompt-dropdown" id="detailCategoryMenu"><button type="button">General</button><button type="button">Development</button><button type="button">Writing</button><button type="button">Research</button></div>
+            </div>
+          </header>
+          <div class="prompt-detail-text-heading">
+            <span>Text</span>
+            <div class="prompt-detail-text-actions">
+              <div class="prompt-dropdown-wrap"><button class="special-variables-button" id="detailVariablesButton" type="button" aria-expanded="false">Special variables<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button><div class="prompt-dropdown variables-menu" id="detailVariablesMenu"><button type="button">{{current_date}}</button><button type="button">{{current_user}}</button><button type="button">{{clipboard}}</button></div></div>
+              <button class="prompt-text-edit" id="promptTextEditButton" type="button" aria-label="Edit prompt text" title="Edit prompt text"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"/></svg></button>
+            </div>
+          </div>
+          <textarea class="prompt-detail-text" id="promptDetailText" readonly></textarea>
+          <div class="prompt-form-row"><input id="promptDetailDescription" type="text" maxlength="120" placeholder="Optional: Enter a description to display for the prompt"><span id="promptDetailDescriptionCount">0/120</span></div>
+          <div class="prompt-form-row"><input id="promptDetailCommand" type="text" maxlength="56" placeholder="Optional: Enter a command for the prompt or name will be used"><span id="promptDetailCommandCount">0/56</span></div>
+          <p class="prompt-save-status" id="promptSaveStatus">Changes save locally in this browser session</p>
+        </div>
+      </section>
+    </main>
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="mock-modal" id="createSkillModal" aria-hidden="true">
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="createSkillTitle">
+        <button class="modal-close" data-close-modal aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <span class="modal-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+        <h2 id="createSkillTitle">Create Skill</h2><p>Skill creation is represented as a frontend-only placeholder in this prototype.</p>
+        <button class="create-button" data-close-modal>Got it</button>
+      </section>
+    </div>
+    <div class="memory-modal" id="memoryModal" aria-hidden="true">
+      <div class="memory-modal-backdrop" data-close-memory></div>
+      <section class="memory-modal-card" role="dialog" aria-modal="true" aria-labelledby="memoryModalTitle">
+        <header><h2 id="memoryModalTitle">Create Memory</h2><button type="button" data-close-memory aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+        <div class="memory-modal-meta" id="memoryModalMeta"><span id="memoryModalTokens"></span><i></i><span id="memoryModalDate"></span></div>
+        <form id="memoryForm" novalidate>
+          <label for="memoryKey">Key</label><input id="memoryKey" type="text" placeholder="Enter key" autocomplete="off"><p class="memory-key-help" id="memoryKeyHelp">Use lowercase letters and underscores only</p>
+          <label for="memoryValue">Value</label><textarea id="memoryValue" placeholder="Enter value"></textarea>
+          <footer><button class="memory-cancel" type="button" data-close-memory>Cancel</button><button class="memory-submit" id="memorySubmit" type="submit" disabled>Create</button></footer>
+        </form>
+      </section>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
