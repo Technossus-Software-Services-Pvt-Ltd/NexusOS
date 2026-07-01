@@ -1307,38 +1307,27 @@ const agentToolsModal = $('#agentToolsModal');
 const toolConfigModal = $('#toolConfigModal');
 
 function loadToolCatalog() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('librechat_mock_tools'));
-    if (Array.isArray(saved)) {
-      const customTools = saved.filter(tool => tool.custom && !defaultAgentTools.some(item => item.id === tool.id));
-      return [...defaultAgentTools, ...customTools];
-    }
-  } catch (error) { /* use predefined catalog */ }
   return [...defaultAgentTools];
 }
 
 function saveToolCatalog() {
-  try { localStorage.setItem('librechat_mock_tools', JSON.stringify(agentToolCatalog)); } catch (error) { /* runtime catalog remains available */ }
+  // Runtime-only state: the catalog resets to predefined tools on refresh.
 }
 
 function loadSelectedTools() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('librechat_selected_tools'));
-    return Array.isArray(saved) ? saved.filter(id => agentToolCatalog.some(tool => tool.id === id)) : [];
-  } catch (error) { return []; }
+  return [];
 }
 
 function saveSelectedTools() {
   persistedToolSelection = [...agentDraftTools];
-  try { localStorage.setItem('librechat_selected_tools', JSON.stringify(persistedToolSelection)); } catch (error) { /* runtime selection remains available */ }
 }
 
 function loadToolConfigurations() {
-  try { return JSON.parse(localStorage.getItem('librechat_tool_configurations')) || {}; } catch (error) { return {}; }
+  return {};
 }
 
 function saveToolConfigurations() {
-  try { localStorage.setItem('librechat_tool_configurations', JSON.stringify(toolConfigurations)); } catch (error) { /* runtime configuration remains available */ }
+  // Runtime-only state: tool configurations reset on refresh.
 }
 
 function toolInitials(name) {
