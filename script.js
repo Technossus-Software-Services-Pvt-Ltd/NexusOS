@@ -22,14 +22,36 @@ const settingsPanel = $('#settingsPanel');
 let modelSettings = loadModelSettings();
 const modelCatalog = {
   openai: { label: 'OpenAI', models: ['gpt-4.1', 'gpt-4o-mini'] },
-  'my agents': { label: 'My Agents', models: ['deeloping-guide'] },
+  'my agents': { label: 'My Agents', models: [] },
   assistants: { label: 'Assistants', models: ['project-assistant'] },
   google: { label: 'Google', models: ['gemini-2.5-flash', 'gemini-2.5-pro'] },
   anthropic: { label: 'Anthropic', models: ['claude-sonnet-4'] },
-  'local slm': { label: 'Local SLM', models: ['local-slm-small', 'local-slm-base', 'local-slm-coder', 'local-slm-rag'] }
+  'local slm': { label: 'Local SLM', models: ['qwen2.5:7b', 'llama3.2', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'phi3:mini', 'codellama:7b', 'deepseek-coder:6.7b'] }
 };
-let selectedModel = localStorage.getItem('librechat_selected_model') || 'gemini-2.5-flash';
+const ollamaModels = new Set(['qwen2.5:7b', 'llama3.2', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'phi3:mini', 'codellama:7b', 'deepseek-coder:6.7b']);
+let selectedModel = 'gemini-2.5-flash';
 const agentState = loadAgentState();
+let agentSkillCatalog = loadSkillCatalog();
+let activeSkillId = null;
+let editingSkillId = null;
+let highlightedSkillId = null;
+let agentDraftSkills = [];
+let activeAgentSkillCategory = 'All';
+const defaultAgentTools = [
+  ['github','GitHub','Manage repositories, issues, pull requests, and code workflows.','Development','Popular'],['gitlab','GitLab','Connect repositories, merge requests, and CI/CD workflows.','Development','Mock'],['jira','Jira','Track issues, sprint tasks, and project tickets.','Development','Popular'],['linear','Linear','Manage product issues and engineering workflows.','Development','Mock'],
+  ['slack','Slack','Send messages, summarize channels, and support team collaboration.','Communication','Popular'],['microsoft-teams','Microsoft Teams','Connect meetings, chats, and workspace conversations.','Communication','Mock'],['discord','Discord','Use community and team conversations inside agent workflows.','Communication','Mock'],
+  ['google-drive','Google Drive','Search, organize, and summarize documents.','Productivity','Connected'],['google-calendar','Google Calendar','Read schedules and create calendar events.','Productivity','Mock'],['gmail','Gmail','Draft, search, and summarize emails.','Productivity','Mock'],['notion','Notion','Read and organize notes, docs, and project pages.','Productivity','Popular'],
+  ['aws','AWS','Connect cloud services, infrastructure tasks, and deployment workflows.','Cloud','Mock'],['azure','Azure','Work with cloud resources, deployments, and monitoring.','Cloud','Coming Soon'],['google-cloud','Google Cloud','Manage cloud resources and AI workflows.','Cloud','Mock'],
+  ['postgresql','PostgreSQL','Query relational data and inspect database records.','Data','Mock'],['mysql','MySQL','Connect and query structured database data.','Data','Mock'],['mongodb','MongoDB','Search and manage document-based collections.','Data','Mock'],
+  ['openai-image-tools','OpenAI Image Tools','Generate and edit images using mock AI tools.','AI','Popular'],['calculator','Calculator','Perform mathematical calculations.','AI','Connected'],['web-search','Web Search','Search the web using mock search behavior.','AI','Mock'],['zapier','Zapier','Connect apps and automate workflows.','Automation','Popular']
+].map(([id,name,description,category,status]) => ({ id,name,description,category,status }));
+let agentToolCatalog = loadToolCatalog();
+const configurableTools = new Set(['github','jira','slack','microsoft-teams','aws', ...agentToolCatalog.filter(tool => tool.custom).map(tool => tool.id)]);
+let persistedToolSelection = loadSelectedTools();
+let agentDraftTools = [...persistedToolSelection];
+let activeToolCategory = 'All';
+let configuringToolId = null;
+let toolConfigurations = loadToolConfigurations();
 const memories = [];
 let editingMemoryId = null;
 
@@ -49,6 +71,20 @@ function setMobilePanel(open) {
   overlay.classList.toggle('visible', open);
 }
 
+function closeSidePanel(panel, navButton) {
+  panel.classList.add('is-hidden');
+  panel.classList.remove('mobile-open', 'open');
+  navButton?.classList.remove('active');
+  overlay.classList.remove('visible');
+  menuPopover?.classList.remove('open');
+  createMenu?.setAttribute('aria-expanded', 'false');
+  if (panel === agentPanel) closeAddSkillsModal();
+  if (panel === agentPanel) {
+    closeAgentToolsModal();
+    closeToolConfiguration();
+  }
+}
+
 function openWorkspace(workspace) {
   const showAgents = workspace === 'agents';
   const showSkills = workspace === 'skills';
@@ -56,6 +92,7 @@ function openWorkspace(workspace) {
   const showMemory = workspace === 'memory';
   const showChats = workspace === 'chats';
   const showSettings = workspace === 'settings';
+  if (showAgents) agentPanel.classList.remove('is-hidden');
   agentPanel.classList.toggle('hidden', showSkills || showPrompts || showMemory || showChats || showSettings);
   skillsPanel.classList.toggle('open', showSkills);
   promptsPanel.classList.toggle('open', showPrompts);
@@ -83,7 +120,12 @@ function openWorkspace(workspace) {
 }
 
 function selectSkill(selected) {
-  $('#developmentSkill').classList.toggle('selected', selected);
+  $('#developmentSkill')?.classList.toggle('selected', selected);
+  if (!selected) {
+    activeSkillId = null;
+    $$('.skill-list-item').forEach(item => item.classList.remove('selected'));
+    $('#createSkillView').classList.remove('open');
+  }
   chatWelcome.classList.toggle('skill-hidden', selected);
   skillDetail.classList.toggle('open', selected);
   if (selected && window.matchMedia('(max-width: 700px)').matches) setMobilePanel(false);
@@ -113,6 +155,8 @@ function closeModelDropdown() {
 
 function updateSelectedModelUI() {
   $('#selectedModelText').textContent = selectedModel;
+  $('#messageInput').placeholder = `Message ${selectedModel}`;
+  $('#conversationInput').placeholder = `Message ${selectedModel}`;
   const isLocal = providerForModel(selectedModel) === 'local slm';
   $('#selectedModelIcon').classList.toggle('local-model-icon', isLocal);
   $$('.provider-row[data-provider]').forEach(row => row.classList.toggle('selected-provider', row.dataset.provider === providerForModel(selectedModel)));
@@ -129,9 +173,16 @@ function renderLocalModels() {
     button.className = 'local-model-button';
     button.dataset.model = model;
     const name = document.createElement('span');
+    name.className = 'local-model-name';
     name.textContent = model;
-    button.append(name);
-    if (model === selectedModel) button.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>');
+    const trailing = document.createElement('span');
+    trailing.className = 'local-model-meta';
+    const badge = document.createElement('span');
+    badge.className = `model-runtime-badge ${ollamaModels.has(model) ? 'ollama' : 'local'}`;
+    badge.textContent = ollamaModels.has(model) ? 'OLLAMA' : 'LOCAL';
+    trailing.append(badge);
+    if (model === selectedModel) trailing.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>');
+    button.append(name, trailing);
     button.addEventListener('click', () => switchModel(model));
     list.append(button);
   });
@@ -148,7 +199,6 @@ function switchModel(model) {
   $('#selectedModelText').textContent = 'Switching…';
   setTimeout(() => {
     selectedModel = model;
-    try { localStorage.setItem('librechat_selected_model', selectedModel); } catch (error) { /* mock state remains active */ }
     modelSelectorButton.classList.remove('loading');
     renderLocalModels();
     showToast(`Model switched to ${selectedModel}`, 'success');
@@ -212,9 +262,9 @@ renderLocalModels();
 $('#openAdvanced').addEventListener('click', () => setView('advanced'));
 $('#backAdvanced').addEventListener('click', () => setView('main'));
 $('#openPanel').addEventListener('click', () => setMobilePanel(true));
-$('#closePanel').addEventListener('click', () => {
-  if (window.matchMedia('(max-width: 700px)').matches) setMobilePanel(false);
-  else showToast('Agent builder stays open in this prototype');
+$('#closePanel').addEventListener('click', event => {
+  event.stopPropagation();
+  closeSidePanel(agentPanel, $('#agentsNav'));
 });
 overlay.addEventListener('click', () => setMobilePanel(false));
 $('#agentsNav').addEventListener('click', () => openWorkspace('agents'));
@@ -231,7 +281,6 @@ $('#closeSettings').addEventListener('click', () => {
   if (window.matchMedia('(max-width: 700px)').matches) setMobilePanel(false);
   else openWorkspace(conversationView.classList.contains('open') ? 'chats' : 'agents');
 });
-$('#developmentSkill').addEventListener('click', () => selectSkill(true));
 
 $('#skillsGroupToggle').addEventListener('click', event => {
   const button = event.currentTarget;
@@ -240,36 +289,111 @@ $('#skillsGroupToggle').addEventListener('click', event => {
   $('#skillsGroup').classList.toggle('collapsed', expanded);
 });
 
+function defaultSkillCatalog() {
+  return [];
+}
+
+function loadSkillCatalog() {
+  return defaultSkillCatalog();
+}
+
+function saveSkillCatalog() {
+  // Runtime-only state: agentSkillCatalog already contains current changes.
+}
+
+function skillDate(value) {
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderStandaloneSkills() {
+  const query = $('#skillSearchInput').value.trim().toLowerCase();
+  const list = $('#createdSkillsList');
+  list.replaceChildren();
+  agentSkillCatalog.forEach(skill => {
+    const match = !query || `${skill.title} ${skill.description}`.toLowerCase().includes(query);
+    if (!match) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'skill-list-item';
+    button.dataset.skillId = skill.id;
+    button.classList.toggle('selected', skill.id === activeSkillId);
+    button.innerHTML = '<span class="skill-file-icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></span>';
+    const name = document.createElement('span');
+    name.textContent = skill.title;
+    button.append(name);
+    button.addEventListener('click', () => openSkillDetail(skill.id));
+    list.append(button);
+  });
+  const visibleCount = list.children.length;
+  $('#standaloneSkillCount').textContent = agentSkillCatalog.length;
+  $('#skillsEmpty').classList.toggle('visible', visibleCount === 0);
+}
+
+function openSkillDetail(id) {
+  const skill = agentSkillCatalog.find(item => item.id === id);
+  if (!skill) return;
+  activeSkillId = id;
+  $('#skillDetailTitle').textContent = skill.title;
+  $('#skillDetailCategory').textContent = skill.category || 'Misc.';
+  $('#skillDetailDate').textContent = skillDate(skill.createdAt);
+  $('#skillDescriptionText').textContent = skill.description;
+  $('#skillInstructionsText').textContent = skill.instructions;
+  $('#skillEnabled').checked = skill.enabled !== false;
+  $('#deleteSkillButton').hidden = Boolean(skill.builtIn);
+  renderStandaloneSkills();
+  chatWelcome.classList.add('skill-hidden');
+  $('#createSkillView').classList.remove('open');
+  skillDetail.classList.add('open');
+  if (window.matchMedia('(max-width: 700px)').matches) setMobilePanel(false);
+}
+
 $('#skillSearchButton').addEventListener('click', () => {
   const search = $('#skillSearchWrap');
   search.classList.toggle('open');
   if (search.classList.contains('open')) $('#skillSearchInput').focus();
 });
-$('#skillSearchInput').addEventListener('input', event => {
-  const match = 'deeloping-guide'.includes(event.target.value.trim().toLowerCase());
-  $('#developmentSkill').hidden = !match;
-  $('#skillsEmpty').classList.toggle('visible', !match);
-});
+$('#skillSearchInput').addEventListener('input', renderStandaloneSkills);
+renderStandaloneSkills();
 
 const createSkillModal = $('#createSkillModal');
 $('#createSkillButton').addEventListener('click', () => {
-  createSkillModal.classList.add('open');
-  createSkillModal.setAttribute('aria-hidden', 'false');
+  openCreateSkillPage(null, 'skills');
 });
 $$('[data-close-modal]').forEach(button => button.addEventListener('click', () => {
   createSkillModal.classList.remove('open');
   createSkillModal.setAttribute('aria-hidden', 'true');
 }));
 
-$('#skillEnabled').addEventListener('change', event => showToast(event.target.checked ? 'Skill enabled' : 'Skill disabled'));
+$('#skillEnabled').addEventListener('change', event => {
+  const skill = agentSkillCatalog.find(item => item.id === activeSkillId);
+  if (skill) { skill.enabled = event.target.checked; saveSkillCatalog(); }
+  showToast(event.target.checked ? 'Skill enabled' : 'Skill disabled');
+});
 $('#editSkillButton').addEventListener('click', event => {
+  const selectedSkill = agentSkillCatalog.find(item => item.id === activeSkillId);
+  if (selectedSkill && !selectedSkill.builtIn && !skillDetail.classList.contains('editing')) {
+    openCreateSkillPage(selectedSkill.id);
+    return;
+  }
   const editing = skillDetail.classList.toggle('editing');
   $('#skillDescriptionText').contentEditable = String(editing);
   $('#skillInstructionsText').contentEditable = String(editing);
   event.currentTarget.lastChild.textContent = editing ? 'Done' : 'Edit';
   if (editing) $('#skillDescriptionText').focus();
-  else showToast('Skill edits saved locally for this session');
+  else {
+    const skill = agentSkillCatalog.find(item => item.id === activeSkillId);
+    if (skill) {
+      skill.description = $('#skillDescriptionText').textContent.trim();
+      skill.instructions = $('#skillInstructionsText').textContent.trim();
+      saveSkillCatalog();
+      renderStandaloneSkills();
+      renderAssignedAgentSkills();
+      renderAgentSkillResults();
+    }
+    showToast('Skill updated successfully', 'success');
+  }
 });
+$('#deleteSkillButton').addEventListener('click', () => deleteSkill(activeSkillId));
 $('#previewSkillButton').addEventListener('click', () => {
   skillDetail.classList.remove('source-mode');
   $('#previewSkillButton').classList.add('selected');
@@ -486,34 +610,16 @@ $$('#detailVariablesMenu button').forEach(button => button.addEventListener('cli
 }));
 
 function defaultChats() {
-  const now = Date.now();
-  return [
-    { id: 'initial-greeting-1', title: 'Initial Greeting', group: 'today', updatedAt: now, messages: [{ sender: 'user', text: 'hi hello' }, { sender: 'assistant', text: 'Hello! How can I help you today?' }] },
-    { id: 'initial-greeting-2', title: 'Initial Greeting', group: 'today', updatedAt: now - 60000, messages: [{ sender: 'user', text: 'Hello Gemini' }, { sender: 'assistant', text: 'Hello! What would you like to work on today?' }] },
-    { id: 'responsive-authentication-page', title: 'Responsive Authentication Page', group: 'previous', updatedAt: now - 3 * 86400000, messages: [{ sender: 'user', text: 'Create a responsive authentication page with a clean, modern layout.' }, { sender: 'assistant', text: 'I can help you refine the UI, improve spacing, and make the prototype feel closer to LibreChat.' }] }
-  ];
+  return [];
 }
 
 function loadChatState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('librechat_mock_chats'));
-    if (Array.isArray(saved?.chats)) {
-      const selected = saved.chats.some(chat => chat.id === saved.selected) ? saved.selected : null;
-      return { chats: saved.chats, selected, typingChatId: null };
-    }
-  } catch (error) {
-    console.warn('Saved chats could not be loaded.', error);
-  }
   const chats = defaultChats();
-  return { chats, selected: chats[0].id, typingChatId: null };
+  return { chats, selected: null, typingChatId: null };
 }
 
 function saveChatState() {
-  try {
-    localStorage.setItem('librechat_mock_chats', JSON.stringify({ chats: chatState.chats, selected: chatState.selected }));
-  } catch (error) {
-    console.warn('Chats could not be saved.', error);
-  }
+  // Runtime-only state: chatState is intentionally discarded on refresh.
 }
 
 function currentChat() {
@@ -754,14 +860,7 @@ function defaultModelSettings() {
 }
 
 function loadModelSettings() {
-  const defaults = defaultModelSettings();
-  try {
-    const saved = JSON.parse(localStorage.getItem('librechat_model_settings'));
-    return saved && typeof saved === 'object' ? { ...defaults, ...saved } : defaults;
-  } catch (error) {
-    console.warn('Model settings could not be loaded.', error);
-    return defaults;
-  }
+  return defaultModelSettings();
 }
 
 function updateRangeAppearance(input) {
@@ -800,18 +899,12 @@ $$('[data-setting]', settingsPanel).forEach(control => {
 
 $('#settingsForm').addEventListener('submit', event => {
   event.preventDefault();
-  try {
-    localStorage.setItem('librechat_model_settings', JSON.stringify(modelSettings));
-    showToast('Preset saved successfully', 'success');
-  } catch (error) {
-    showToast('Preset could not be saved');
-  }
+  showToast('Preset saved for this session', 'success');
 });
 
 $('#resetSettings').addEventListener('click', () => {
   modelSettings = defaultModelSettings();
   renderModelSettings();
-  try { localStorage.setItem('librechat_model_settings', JSON.stringify(modelSettings)); } catch (error) { /* mock state still resets */ }
   showToast('Model parameters reset');
 });
 
@@ -967,27 +1060,15 @@ const createMenu = $('#createMenu');
 const menuPopover = $('#menuPopover');
 
 function defaultAgents() {
-  return [
-    { id: 'agent-vaishnavi', name: 'vaishnavi', description: 'A helpful personal assistant.', category: 'General', instructions: 'Be helpful, concise, and friendly.', model: 'gemini-3.1-pro-preview', runCode: false, webSearch: false, fileContext: false, artifacts: true, fileSearch: false, skills: false, supportName: 'Vaishnavi', supportEmail: '', subagents: false, handoffs: false, chain: false },
-    { id: 'agent-developer', name: 'DEeveloper', description: 'A practical development assistant.', category: 'Developer', instructions: 'Write clean, maintainable code and explain important tradeoffs.', model: 'gemini-3.1-pro-preview', runCode: true, webSearch: true, fileContext: false, artifacts: true, fileSearch: true, skills: true, supportName: '', supportEmail: '', subagents: false, handoffs: false, chain: false }
-  ];
+  return [];
 }
 
 function loadAgentState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('librechat_mock_agents'));
-    if (saved && Array.isArray(saved.agents)) {
-      const selected = saved.agents.some(agent => agent.id === saved.selected) ? saved.selected : null;
-      return { agents: saved.agents, selected };
-    }
-  } catch (error) {
-    console.warn('Agents could not be loaded.', error);
-  }
   return { agents: defaultAgents(), selected: null };
 }
 
 function saveAgentState() {
-  try { localStorage.setItem('librechat_mock_agents', JSON.stringify(agentState)); } catch (error) { console.warn('Agents could not be saved.', error); }
+  // Runtime-only state: agentState already contains current changes.
 }
 
 function currentSelectedAgent() {
@@ -1039,7 +1120,9 @@ function setAgentControl(id, value) {
 }
 
 function populateAgentForm(agent) {
-  const values = agent || { name: '', description: '', category: 'General', instructions: '', model: 'gemini-3.1-pro-preview', runCode: false, webSearch: false, fileContext: false, artifacts: false, fileSearch: false, skills: false, supportName: '', supportEmail: '', subagents: false, handoffs: false, chain: false };
+  const values = agent || { name: '', description: '', category: 'General', instructions: '', model: 'gemini-3.1-pro-preview', runCode: false, webSearch: false, fileContext: false, artifacts: false, fileSearch: false, skills: false, assignedSkills: [], selectedTools: [...persistedToolSelection], supportName: '', supportEmail: '', subagents: false, handoffs: false, chain: false };
+  agentDraftSkills = [...(values.assignedSkills || [])];
+  agentDraftTools = [...(values.selectedTools || [])];
   setAgentControl('agentName', values.name);
   setAgentControl('description', values.description);
   setAgentControl('category', values.category);
@@ -1061,6 +1144,8 @@ function populateAgentForm(agent) {
   $('#agentMenuLabel').textContent = agent ? agent.name : 'Create New Agent';
   $('#createAgent').textContent = agent ? 'Save Changes' : 'Create';
   $('.identity-block').classList.toggle('editing', Boolean(agent));
+  renderAssignedAgentSkills();
+  renderSelectedAgentTools();
 }
 
 function gatherAgentForm() {
@@ -1068,7 +1153,7 @@ function gatherAgentForm() {
     name: $('#agentName').value.trim() || 'Untitled Agent', description: $('#description').value.trim(), category: $('#category').value,
     instructions: $('#instructions').value.trim(), model: $('#model').value, runCode: $('#agentRunCode').checked,
     webSearch: $('#agentWebSearch').checked, fileContext: $('#agentFileContext').checked, artifacts: $('#agentArtifacts').checked,
-    fileSearch: $('#agentFileSearch').checked, skills: $('#agentSkills').checked, supportName: $('#agentSupportName').value.trim(),
+    fileSearch: $('#agentFileSearch').checked, skills: $('#agentSkills').checked, assignedSkills: [...agentDraftSkills], selectedTools: [...agentDraftTools], supportName: $('#agentSupportName').value.trim(),
     supportEmail: $('#agentSupportEmail').value.trim(), subagents: $('#agentSubagents').checked, handoffs: $('#agentHandoffs').checked,
     chain: $('#agentChain').checked
   };
@@ -1127,6 +1212,437 @@ document.addEventListener('click', event => {
 populateAgentForm(currentSelectedAgent());
 renderAgentList();
 
+const addSkillsModal = $('#addSkillsModal');
+
+function renderAssignedAgentSkills() {
+  const container = $('#agentAssignedSkills');
+  container.replaceChildren();
+  agentDraftSkills.forEach(skillId => {
+    const skill = agentSkillCatalog.find(item => item.id === skillId);
+    if (!skill) return;
+    const chip = document.createElement('span');
+    chip.className = 'agent-assigned-skill';
+    chip.textContent = skill.title;
+    container.append(chip);
+  });
+}
+
+function closeAddSkillsModal() {
+  addSkillsModal.classList.remove('open');
+  addSkillsModal.setAttribute('aria-hidden', 'true');
+}
+
+function renderAgentSkillResults() {
+  const query = $('#agentSkillSearch').value.trim().toLowerCase();
+  const matches = agentSkillCatalog.filter(skill => skill.categories.includes(activeAgentSkillCategory) && (!query || `${skill.title} ${skill.description}`.toLowerCase().includes(query)));
+  const results = $('#agentSkillResults');
+  results.replaceChildren();
+  matches.forEach(skill => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'agent-skill-card';
+    card.classList.toggle('selected', agentDraftSkills.includes(skill.id));
+    card.classList.toggle('newly-created', skill.id === highlightedSkillId);
+    const title = document.createElement('h3');
+    title.textContent = skill.title;
+    const description = document.createElement('p');
+    description.textContent = skill.description.length > 145 ? `${skill.description.slice(0, 145)}...` : skill.description;
+    const check = document.createElement('span');
+    check.className = 'agent-skill-check';
+    check.textContent = '✓';
+    card.append(title, description, check);
+    card.addEventListener('click', () => attachSkillToAgent(skill.id, card));
+    results.append(card);
+  });
+  const empty = $('#agentSkillEmpty');
+  empty.classList.toggle('visible', matches.length === 0);
+  empty.classList.toggle('search-empty', matches.length === 0 && Boolean(query));
+  results.hidden = matches.length === 0;
+}
+
+function openAddSkillsModal() {
+  activeAgentSkillCategory = 'All';
+  $$('#skillCategoryList button').forEach(button => button.classList.toggle('active', button.dataset.category === 'All'));
+  $('#agentSkillSearch').value = '';
+  renderAgentSkillResults();
+  addSkillsModal.classList.add('open');
+  addSkillsModal.setAttribute('aria-hidden', 'false');
+  $('#agentSkillSearch').focus();
+}
+
+function attachSkillToAgent(skillId, card) {
+  if (agentDraftSkills.includes(skillId)) {
+    closeAddSkillsModal();
+    return;
+  }
+  card.classList.add('selected');
+  card.disabled = true;
+  setTimeout(() => {
+    agentDraftSkills.push(skillId);
+    highlightedSkillId = null;
+    $('#agentSkills').checked = true;
+    renderAssignedAgentSkills();
+    const selectedAgent = currentSelectedAgent();
+    if (selectedAgent) {
+      selectedAgent.assignedSkills = [...agentDraftSkills];
+      selectedAgent.skills = true;
+      saveAgentState();
+    }
+    closeAddSkillsModal();
+    showToast('Skill added to agent', 'success');
+  }, 280);
+}
+
+$('#addAgentSkillsButton').addEventListener('click', openAddSkillsModal);
+$$('[data-close-agent-skills]').forEach(element => element.addEventListener('click', closeAddSkillsModal));
+$('#agentCreateSkillButton').addEventListener('click', () => openCreateSkillPage());
+$('#agentSkillSearch').addEventListener('input', renderAgentSkillResults);
+$$('#skillCategoryList button').forEach(button => button.addEventListener('click', event => {
+  activeAgentSkillCategory = event.currentTarget.dataset.category;
+  $$('#skillCategoryList button').forEach(category => category.classList.toggle('active', category === event.currentTarget));
+  renderAgentSkillResults();
+}));
+
+const agentToolsModal = $('#agentToolsModal');
+const toolConfigModal = $('#toolConfigModal');
+
+function loadToolCatalog() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('librechat_mock_tools'));
+    if (Array.isArray(saved)) {
+      const customTools = saved.filter(tool => tool.custom && !defaultAgentTools.some(item => item.id === tool.id));
+      return [...defaultAgentTools, ...customTools];
+    }
+  } catch (error) { /* use predefined catalog */ }
+  return [...defaultAgentTools];
+}
+
+function saveToolCatalog() {
+  try { localStorage.setItem('librechat_mock_tools', JSON.stringify(agentToolCatalog)); } catch (error) { /* runtime catalog remains available */ }
+}
+
+function loadSelectedTools() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('librechat_selected_tools'));
+    return Array.isArray(saved) ? saved.filter(id => agentToolCatalog.some(tool => tool.id === id)) : [];
+  } catch (error) { return []; }
+}
+
+function saveSelectedTools() {
+  persistedToolSelection = [...agentDraftTools];
+  try { localStorage.setItem('librechat_selected_tools', JSON.stringify(persistedToolSelection)); } catch (error) { /* runtime selection remains available */ }
+}
+
+function loadToolConfigurations() {
+  try { return JSON.parse(localStorage.getItem('librechat_tool_configurations')) || {}; } catch (error) { return {}; }
+}
+
+function saveToolConfigurations() {
+  try { localStorage.setItem('librechat_tool_configurations', JSON.stringify(toolConfigurations)); } catch (error) { /* runtime configuration remains available */ }
+}
+
+function toolInitials(name) {
+  return name.split(/\s+/).map(word => word[0]).join('').slice(0, 3).toUpperCase();
+}
+
+function renderSelectedAgentTools() {
+  const container = $('#agentSelectedTools');
+  container.replaceChildren();
+  agentDraftTools.forEach(toolId => {
+    const tool = agentToolCatalog.find(item => item.id === toolId);
+    if (!tool) return;
+    const chip = document.createElement('span');
+    chip.className = 'agent-tool-chip';
+    chip.append(document.createTextNode(tool.name));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', `Remove ${tool.name}`);
+    remove.textContent = '×';
+    remove.addEventListener('click', () => toggleAgentTool(tool.id, false));
+    chip.append(remove);
+    container.append(chip);
+  });
+}
+
+function persistCurrentAgentTools() {
+  saveSelectedTools();
+  const agent = currentSelectedAgent();
+  if (agent) {
+    agent.selectedTools = [...agentDraftTools];
+    saveAgentState();
+  }
+}
+
+function toggleAgentTool(toolId, showMessage = true) {
+  const tool = agentToolCatalog.find(item => item.id === toolId);
+  const selected = agentDraftTools.includes(toolId);
+  agentDraftTools = selected ? agentDraftTools.filter(id => id !== toolId) : [...agentDraftTools, toolId];
+  renderSelectedAgentTools();
+  persistCurrentAgentTools();
+  renderAgentTools();
+  if (showMessage) showToast(selected ? 'Tool removed from agent' : 'Tool added to agent', selected ? 'default' : 'success');
+}
+
+function renderAgentTools() {
+  const query = $('#agentToolSearch').value.trim().toLowerCase();
+  const matches = agentToolCatalog.filter(tool => (activeToolCategory === 'All' || tool.category === activeToolCategory) && (!query || `${tool.name} ${tool.description} ${tool.category}`.toLowerCase().includes(query)));
+  const grid = $('#agentToolsGrid');
+  grid.replaceChildren();
+  matches.forEach(tool => {
+    const selected = agentDraftTools.includes(tool.id);
+    const card = document.createElement('article');
+    card.className = 'agent-tool-card';
+    card.classList.toggle('selected', selected);
+    const top = document.createElement('div');
+    top.className = 'agent-tool-card-top';
+    const logo = document.createElement('span');
+    logo.className = 'agent-tool-logo';
+    logo.textContent = toolInitials(tool.name);
+    const heading = document.createElement('div');
+    const name = document.createElement('h3');
+    name.textContent = tool.name;
+    const category = document.createElement('span');
+    category.className = 'agent-tool-category';
+    category.textContent = tool.category;
+    heading.append(name, category);
+    top.append(logo, heading);
+    const displayStatus = toolConfigurations[tool.id] ? 'Connected' : tool.status;
+    const status = document.createElement('span');
+    status.className = `tool-status ${displayStatus.toLowerCase().replace(/\s+/g, '-')}`;
+    status.textContent = displayStatus;
+    const description = document.createElement('p');
+    description.textContent = tool.description;
+    const actions = document.createElement('div');
+    actions.className = 'agent-tool-card-actions';
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'tool-add-button';
+    add.textContent = selected ? 'Added' : 'Add';
+    add.addEventListener('click', () => toggleAgentTool(tool.id));
+    actions.append(add);
+    if (selected && configurableTools.has(tool.id)) {
+      const configure = document.createElement('button');
+      configure.type = 'button';
+      configure.className = 'tool-configure';
+      configure.textContent = 'Configure';
+      configure.addEventListener('click', () => openToolConfiguration(tool.id));
+      actions.prepend(configure);
+    }
+    card.append(top, status, description, actions);
+    grid.append(card);
+  });
+  $('#agentToolsEmpty').classList.toggle('visible', matches.length === 0);
+  grid.hidden = matches.length === 0;
+  $('#selectedToolsCount').textContent = `Selected tools: ${agentDraftTools.length}`;
+}
+
+function openAgentToolsModal() {
+  activeToolCategory = 'All';
+  $('#agentToolSearch').value = '';
+  $$('#agentToolCategories button').forEach(button => button.classList.toggle('active', button.dataset.toolCategory === 'All'));
+  $('#agentToolsGrid').replaceChildren();
+  $('#agentToolsLoading').classList.add('visible');
+  $('#agentToolsEmpty').classList.remove('visible');
+  agentToolsModal.classList.add('open');
+  agentToolsModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => {
+    if (!agentToolsModal.classList.contains('open')) return;
+    $('#agentToolsLoading').classList.remove('visible');
+    renderAgentTools();
+    $('#agentToolSearch').focus();
+  }, 400);
+}
+
+function closeAgentToolsModal() {
+  agentToolsModal.classList.remove('open');
+  agentToolsModal.setAttribute('aria-hidden', 'true');
+}
+
+function openToolConfiguration(toolId) {
+  const tool = agentToolCatalog.find(item => item.id === toolId);
+  configuringToolId = toolId;
+  $('#toolConfigTitle').textContent = `${tool.name} Configuration`;
+  $('#toolConfigWorkspace').value = toolConfigurations[toolId]?.workspace || '';
+  toolConfigModal.classList.add('open');
+  toolConfigModal.setAttribute('aria-hidden', 'false');
+  $('#toolConfigWorkspace').focus();
+}
+
+function closeToolConfiguration() {
+  toolConfigModal.classList.remove('open');
+  toolConfigModal.setAttribute('aria-hidden', 'true');
+  configuringToolId = null;
+}
+
+$('#addAgentToolsButton').addEventListener('click', openAgentToolsModal);
+$$('[data-close-tools]').forEach(element => element.addEventListener('click', closeAgentToolsModal));
+$('#agentToolsDone').addEventListener('click', closeAgentToolsModal);
+$('#agentToolSearch').addEventListener('input', renderAgentTools);
+$('#createTemporaryTool').addEventListener('click', () => {
+  const typedName = $('#agentToolSearch').value.trim();
+  const name = typedName || `Custom Tool ${agentToolCatalog.length + 1}`;
+  const id = `tool-${Date.now()}`;
+  const category = activeToolCategory === 'All' ? 'Productivity' : activeToolCategory;
+  agentToolCatalog.push({ id, name, description: 'A custom tool saved locally for this prototype.', category, status: 'Mock', custom: true });
+  configurableTools.add(id);
+  agentDraftTools.push(id);
+  $('#agentToolSearch').value = '';
+  persistCurrentAgentTools();
+  saveToolCatalog();
+  renderSelectedAgentTools();
+  renderAgentTools();
+  showToast('Tool added to agent', 'success');
+});
+$$('#agentToolCategories button').forEach(button => button.addEventListener('click', event => {
+  activeToolCategory = event.currentTarget.dataset.toolCategory;
+  $$('#agentToolCategories button').forEach(item => item.classList.toggle('active', item === event.currentTarget));
+  renderAgentTools();
+}));
+$$('[data-close-tool-config]').forEach(element => element.addEventListener('click', closeToolConfiguration));
+$('#toolConfigForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const tool = agentToolCatalog.find(item => item.id === configuringToolId);
+  toolConfigurations[configuringToolId] = { workspace: $('#toolConfigWorkspace').value.trim(), status: 'connected', updatedAt: Date.now() };
+  saveToolConfigurations();
+  closeToolConfiguration();
+  showToast(`${tool.name} configuration saved`, 'success');
+});
+
+const skillInstructionTemplate = `# Overview
+
+Describe what this skill does and how it should be applied.
+
+## When to use
+
+- List concrete signals that should trigger this skill
+- Add examples that make the trigger unambiguous
+
+## How to apply
+
+Walk through the steps the agent should take.`;
+let skillCreationOrigin = 'agent';
+let skillCreationHadConversation = false;
+
+function validateCreateSkill(showErrors = false) {
+  const fields = [
+    [$('#newSkillName'), $('#newSkillNameError')],
+    [$('#newSkillDescription'), $('#newSkillDescriptionError')],
+    [$('#newSkillInstructions'), $('#newSkillInstructionsError')]
+  ];
+  let valid = true;
+  fields.forEach(([input, error]) => {
+    const fieldValid = Boolean(input.value.trim());
+    valid = valid && fieldValid;
+    if (showErrors) error.closest('.create-skill-field').classList.toggle('invalid', !fieldValid);
+    else if (fieldValid) error.closest('.create-skill-field').classList.remove('invalid');
+  });
+  $('#submitCreateSkill').disabled = !valid;
+  return valid;
+}
+
+function openCreateSkillPage(skillId = null, origin = null) {
+  const skill = skillId ? agentSkillCatalog.find(item => item.id === skillId) : null;
+  editingSkillId = skill?.id || null;
+  skillCreationOrigin = origin || (skillId ? 'skills' : 'agent');
+  skillCreationHadConversation = conversationView.classList.contains('open');
+  closeAddSkillsModal();
+  conversationView.classList.remove('open');
+  chatWelcome.classList.add('skill-hidden');
+  skillDetail.classList.remove('open');
+  promptCreateView.classList.remove('open');
+  promptDetailView.classList.remove('open');
+  $('#createSkillView').classList.add('open');
+  $('#createSkillPageTitle').textContent = skill ? 'Edit Skill' : 'Create Skill';
+  $('#newSkillName').value = skill?.title || '';
+  $('#newSkillDescription').value = skill?.description || '';
+  $('#newSkillInstructions').value = skill?.instructions || skillInstructionTemplate;
+  $('#newSkillCategoryLabel').textContent = skill?.category || 'Category';
+  $('#submitCreateSkill').textContent = skill ? 'Save changes' : 'Create skill';
+  $$('.create-skill-field').forEach(field => field.classList.remove('invalid'));
+  validateCreateSkill();
+  $('#newSkillName').focus();
+}
+
+function leaveCreateSkillPage(returnToModal = false) {
+  $('#createSkillView').classList.remove('open');
+  if (skillCreationOrigin === 'skills' && editingSkillId) openSkillDetail(editingSkillId);
+  else {
+    if (skillCreationHadConversation && chatState.selected) renderConversation();
+    else chatWelcome.classList.remove('skill-hidden');
+    if (returnToModal) openAddSkillsModal();
+  }
+  editingSkillId = null;
+}
+
+function deleteSkill(id) {
+  const skill = agentSkillCatalog.find(item => item.id === id);
+  if (!skill || skill.builtIn) return;
+  agentSkillCatalog = agentSkillCatalog.filter(item => item.id !== id);
+  agentDraftSkills = agentDraftSkills.filter(skillId => skillId !== id);
+  agentState.agents.forEach(agent => { agent.assignedSkills = (agent.assignedSkills || []).filter(skillId => skillId !== id); });
+  saveSkillCatalog();
+  saveAgentState();
+  renderAssignedAgentSkills();
+  renderStandaloneSkills();
+  activeSkillId = null;
+  skillDetail.classList.remove('open');
+  chatWelcome.classList.remove('skill-hidden');
+  showToast('Skill deleted');
+}
+
+$('#newSkillCategoryButton').addEventListener('click', () => {
+  const menu = $('#newSkillCategoryMenu');
+  const open = menu.classList.toggle('open');
+  $('#newSkillCategoryButton').setAttribute('aria-expanded', String(open));
+});
+$$('#newSkillCategoryMenu button').forEach(button => button.addEventListener('click', () => {
+  $('#newSkillCategoryLabel').textContent = button.textContent;
+  $('#newSkillCategoryMenu').classList.remove('open');
+  $('#newSkillCategoryButton').setAttribute('aria-expanded', 'false');
+}));
+[$('#newSkillName'), $('#newSkillDescription'), $('#newSkillInstructions')].forEach(input => {
+  input.addEventListener('input', () => validateCreateSkill(false));
+  input.addEventListener('blur', () => validateCreateSkill(true));
+});
+$('#cancelCreateSkill').addEventListener('click', () => leaveCreateSkillPage(skillCreationOrigin === 'agent'));
+$('#createSkillForm').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!validateCreateSkill(true)) return;
+  const button = $('#submitCreateSkill');
+  button.disabled = true;
+  button.textContent = editingSkillId ? 'Saving...' : 'Creating...';
+  setTimeout(() => {
+    const title = $('#newSkillName').value.trim();
+    const category = $('#newSkillCategoryLabel').textContent === 'Category' ? 'Misc.' : $('#newSkillCategoryLabel').textContent;
+    const values = { title, category, description: $('#newSkillDescription').value, instructions: $('#newSkillInstructions').value, categories: ['All', 'My Skills', category], enabled: true };
+    let savedSkill;
+    if (editingSkillId) {
+      savedSkill = agentSkillCatalog.find(item => item.id === editingSkillId);
+      Object.assign(savedSkill, values, { updatedAt: new Date().toISOString() });
+    } else {
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'skill';
+      savedSkill = { id: `${slug}-${Date.now()}`, ...values, createdAt: new Date().toISOString(), builtIn: false };
+      agentSkillCatalog.push(savedSkill);
+      highlightedSkillId = savedSkill.id;
+    }
+    saveSkillCatalog();
+    renderStandaloneSkills();
+    renderAgentSkillResults();
+    renderAssignedAgentSkills();
+    const wasEditing = Boolean(editingSkillId);
+    const savedId = savedSkill.id;
+    button.disabled = false;
+    showToast(wasEditing ? 'Skill updated successfully' : 'Skill created successfully', 'success');
+    if (skillCreationOrigin === 'agent') {
+      editingSkillId = null;
+      leaveCreateSkillPage(true);
+    } else {
+      editingSkillId = savedId;
+      leaveCreateSkillPage(false);
+    }
+  }, 500);
+});
+
 function updateCounter(input, output) {
   const refresh = () => { output.textContent = `${input.value.length} / ${input.maxLength}`; };
   input.addEventListener('input', refresh);
@@ -1142,7 +1658,7 @@ $$('.switch input[data-upload]').forEach(toggle => {
   });
 });
 
-$$('.upload-button, .outline-button').forEach(button => button.addEventListener('click', () => {
+$$('.upload-button, .outline-button').filter(button => !['addAgentToolsButton', 'addAgentSkillsButton'].includes(button.id)).forEach(button => button.addEventListener('click', () => {
   showToast(`${button.textContent.trim()} is ready for mock configuration`);
 }));
 
@@ -1192,6 +1708,9 @@ $('#messageInput').addEventListener('keydown', event => {
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape') {
     closeModelDropdown();
+    closeAddSkillsModal();
+    closeToolConfiguration();
+    closeAgentToolsModal();
     menuPopover.classList.remove('open');
     createMenu.setAttribute('aria-expanded', 'false');
     createSkillModal.classList.remove('open');

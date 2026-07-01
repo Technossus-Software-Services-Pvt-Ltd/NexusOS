@@ -77,11 +77,12 @@
                 <div class="capability"><div><h3>File Search</h3><p>Search and retrieve content from files.</p></div><label class="switch"><input id="agentFileSearch" type="checkbox" data-upload="fileSearchUpload"><span></span></label></div>
                 <button class="upload-button" id="fileSearchUpload" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 17V3m-5 5 5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Upload Search Files</button>
                 <div class="capability"><div><h3>Skills</h3><p>Enable reusable specialized skills.</p></div><label class="switch"><input id="agentSkills" type="checkbox"><span></span></label></div>
-                <button class="outline-button agent-add-skills" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Skills</button>
+                <div class="agent-assigned-skills" id="agentAssignedSkills"></div>
+                <button class="outline-button agent-add-skills" id="addAgentSkillsButton" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Skills</button>
               </div>
             </section>
 
-            <section class="form-section compact-section"><h2>Tools</h2><button class="outline-button" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Tools</button></section>
+            <section class="form-section agent-tools-section"><div class="compact-section-row"><h2>Tools</h2><button class="outline-button" id="addAgentToolsButton" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Tools</button></div><div class="agent-selected-tools" id="agentSelectedTools"></div></section>
             <section class="form-section compact-section"><h2>Actions</h2><button class="outline-button" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Actions</button></section>
             <section class="form-section compact-section"><h2>Support Contact</h2><p class="section-copy">Let people know where to get help with this agent.</p><div class="support-contact-grid"><input class="field" id="agentSupportName" type="text" placeholder="Contact name"><input class="field" id="agentSupportEmail" type="email" placeholder="support@example.com"></div></section>
             <button class="advanced-button" id="openAdvanced" type="button"><span><svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>Advanced Settings</span><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
@@ -127,12 +128,9 @@
         <input id="skillSearchInput" type="search" placeholder="Search skills" autocomplete="off">
       </div>
       <div class="skills-list">
-        <button class="skills-group-heading" id="skillsGroupToggle" aria-expanded="true"><svg class="group-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><span>My Skills</span><span class="skill-count">1</span></button>
+        <button class="skills-group-heading" id="skillsGroupToggle" aria-expanded="true"><svg class="group-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><span>My Skills</span><span class="skill-count" id="standaloneSkillCount">0</span></button>
         <div class="skills-group" id="skillsGroup">
-          <button class="skill-list-item" id="developmentSkill" data-skill-name="deeloping-guide">
-            <span class="skill-file-icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></span>
-            <span>deeloping-guide</span>
-          </button>
+          <div id="createdSkillsList"></div>
           <p class="skills-empty" id="skillsEmpty">No matching skills</p>
         </div>
       </div>
@@ -236,25 +234,46 @@
         <div class="conversation-scroll" id="conversationMessages"></div>
         <div class="conversation-composer-wrap"><form class="conversation-composer" id="conversationComposer"><textarea id="conversationInput" placeholder="Message Gemini" aria-label="Conversation message"></textarea><div class="conversation-composer-actions"><div><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button><button type="button" aria-label="Message settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button></div><div><button type="button" aria-label="Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="conversation-send" id="conversationSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button></div></div></form><p>LibreChat v0.8.6-rc1 - Every AI for Everyone.</p></div>
       </section>
+      <section class="create-skill-view" id="createSkillView" aria-label="Create skill">
+        <form class="create-skill-form" id="createSkillForm" novalidate>
+          <header class="create-skill-heading"><div><h1 id="createSkillPageTitle">Create Skill</h1><p>Define reusable guidance for agents and conversations.</p></div><div class="skill-category-wrap"><button class="skill-category-button" id="newSkillCategoryButton" type="button" aria-expanded="false"><span id="newSkillCategoryLabel">Category</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button><div class="skill-category-menu" id="newSkillCategoryMenu"><button type="button">Code</button><button type="button">Writing</button><button type="button">Learning</button><button type="button">Ideas</button><button type="button">Misc.</button></div></div></header>
+          <label class="create-skill-field"><span>Name*</span><input id="newSkillName" type="text" placeholder="Name*"><small id="newSkillNameError">Name is required</small></label>
+          <label class="create-skill-field"><span>Description*</span><textarea id="newSkillDescription" placeholder="Apply Acme Corp brand guidelines to presentations and documents..."></textarea><em>Be specific about when this skill should apply.</em><small id="newSkillDescriptionError">Description is required</small></label>
+          <label class="create-skill-field editor-field"><span>Instructions*</span><div class="skill-editor-status" title="Markdown supported"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div><textarea id="newSkillInstructions"># Overview
+
+Describe what this skill does and how it should be applied.
+
+## When to use
+
+- List concrete signals that should trigger this skill
+- Add examples that make the trigger unambiguous
+
+## How to apply
+
+Walk through the steps the agent should take.</textarea><small id="newSkillInstructionsError">Instructions are required</small></label>
+          <footer><button class="create-skill-cancel" id="cancelCreateSkill" type="button">Cancel</button><button class="create-skill-submit" id="submitCreateSkill" type="submit" disabled>Create skill</button></footer>
+        </form>
+      </section>
       <section class="skill-detail" id="skillDetail" aria-labelledby="skillDetailTitle">
         <div class="skill-detail-inner">
           <header class="skill-detail-header">
             <div class="skill-title-group">
               <span class="skill-detail-icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7V3Z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></span>
-              <div><h1 id="skillDetailTitle">deeloping-guide</h1><div class="skill-meta"><span>You</span><i></i><span>Jun 29, 2026</span></div></div>
+              <div><h1 id="skillDetailTitle"></h1><div class="skill-meta"><span>You</span><i></i><span id="skillDetailCategory"></span><i></i><span id="skillDetailDate"></span></div></div>
             </div>
             <label class="switch skill-enabled" title="Enable skill"><input id="skillEnabled" type="checkbox" checked><span></span></label>
           </header>
           <div class="skill-description-block">
             <h2>Description</h2>
-            <p id="skillDescriptionText">You are a developer agent responsible for understanding requirements, planning implementation, writing clean code, debugging issues, and improving existing systems safely.</p>
+            <p id="skillDescriptionText"></p>
           </div>
           <hr>
           <div class="skill-instructions-wrap">
-            <p id="skillInstructionsText">Understand user requirements clearly before implementation. Break complex tasks into small, actionable steps. Write readable, maintainable, and production-ready code. Follow the existing project structure, naming conventions, and coding style. Avoid unnecessary changes outside the requested scope. Identify edge cases, risks, and possible failure points. Debug errors using logs, stack traces, and code flow analysis. Refactor code only when it improves clarity, safety, or maintainability. Add meaningful comments where logic may be difficult to understand. Suggest improvements without over-engineering the solution.</p>
+            <p id="skillInstructionsText"></p>
           </div>
           <div class="skill-detail-actions">
             <button class="edit-skill-button" id="editSkillButton"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"/></svg>Edit</button>
+            <button class="delete-skill-button" id="deleteSkillButton" type="button"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>Delete</button>
             <div class="view-actions">
               <button class="selected" id="previewSkillButton" aria-label="Preview skill" title="Preview"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button>
               <button id="codeSkillButton" aria-label="View source" title="View source"><svg viewBox="0 0 24 24"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/></svg></button>
@@ -323,6 +342,36 @@
           <footer><button class="memory-cancel" type="button" data-close-memory>Cancel</button><button class="memory-submit" id="memorySubmit" type="submit" disabled>Create</button></footer>
         </form>
       </section>
+    </div>
+    <div class="add-skills-modal" id="addSkillsModal" aria-hidden="true">
+      <div class="add-skills-backdrop" data-close-agent-skills></div>
+      <section class="add-skills-dialog" role="dialog" aria-modal="true" aria-labelledby="addSkillsTitle">
+        <aside class="skill-modal-sidebar">
+          <h2 id="addSkillsTitle">Add Skills</h2>
+          <button class="create-skill-action" id="agentCreateSkillButton" type="button"><span>+</span>Create Skill</button>
+          <nav class="skill-category-list" id="skillCategoryList" aria-label="Skill categories">
+            <button type="button" data-category="My Skills">My Skills</button><button type="button" data-category="Favorites">Favorites</button><button class="active" type="button" data-category="All">All</button><button type="button" data-category="Ideas">Ideas</button><button type="button" data-category="Travel">Travel</button><button type="button" data-category="Learning">Learning</button><button type="button" data-category="Writing">Writing</button><button type="button" data-category="Shopping">Shopping</button><button type="button" data-category="Code">Code</button><button type="button" data-category="Misc.">Misc.</button><button type="button" data-category="Roleplay">Roleplay</button><button type="button" data-category="Finance">Finance</button>
+          </nav>
+        </aside>
+        <div class="skill-modal-main">
+          <header><label class="skill-modal-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="agentSkillSearch" type="search" placeholder="Search skills..." autocomplete="off"></label><button class="add-skills-close" data-close-agent-skills aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+          <div class="skill-selection-area" id="agentSkillResults"></div>
+          <div class="skill-modal-empty" id="agentSkillEmpty"><span class="skill-empty-icon">✦</span><h3>No skills in this category</h3></div>
+        </div>
+      </section>
+    </div>
+    <div class="agent-tools-modal" id="agentToolsModal" aria-hidden="true">
+      <div class="agent-tools-backdrop" data-close-tools></div>
+      <section class="agent-tools-dialog" role="dialog" aria-modal="true" aria-labelledby="agentToolsTitle">
+        <header class="agent-tools-header"><div><h2 id="agentToolsTitle">Agent Tools</h2><p>Choose tools your agent can use. Tool selections are stored locally in this prototype.</p></div><button data-close-tools aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+        <div class="agent-tools-controls"><label class="agent-tool-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="agentToolSearch" type="search" placeholder="Search tools" autocomplete="off"></label><div class="agent-tool-categories" id="agentToolCategories"><button class="active" type="button" data-tool-category="All">All</button><button type="button" data-tool-category="Development">Development</button><button type="button" data-tool-category="Productivity">Productivity</button><button type="button" data-tool-category="Communication">Communication</button><button type="button" data-tool-category="Cloud">Cloud</button><button type="button" data-tool-category="Data">Data</button><button type="button" data-tool-category="AI">AI</button><button type="button" data-tool-category="Automation">Automation</button></div></div>
+        <div class="agent-tools-content"><div class="agent-tools-loading" id="agentToolsLoading"><span></span><p>Loading tools...</p></div><div class="agent-tools-grid" id="agentToolsGrid"></div><div class="agent-tools-empty" id="agentToolsEmpty"><span>⌕</span><p>No tools found</p><button id="createTemporaryTool" type="button">Create temporary tool</button></div></div>
+        <footer class="agent-tools-footer"><span id="selectedToolsCount">Selected tools: 0</span><div><button class="tools-cancel" type="button" data-close-tools>Cancel</button><button class="tools-done" id="agentToolsDone" type="button">Done</button></div></footer>
+      </section>
+    </div>
+    <div class="tool-config-modal" id="toolConfigModal" aria-hidden="true">
+      <div class="tool-config-backdrop" data-close-tool-config></div>
+      <section class="tool-config-dialog" role="dialog" aria-modal="true" aria-labelledby="toolConfigTitle"><header><div><h2 id="toolConfigTitle">Configure Tool</h2><span class="connection-status"><i></i>Mock connection</span></div><button data-close-tool-config aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><form id="toolConfigForm"><label for="toolConfigWorkspace">Workspace / Project / Account</label><input id="toolConfigWorkspace" type="text" placeholder="Enter a mock workspace name"><footer><button class="tools-cancel" type="button" data-close-tool-config>Cancel</button><button class="tools-done" type="submit">Save</button></footer></form></section>
     </div>
   </div>
   <script src="script.js"></script>
