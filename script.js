@@ -857,7 +857,7 @@ function generateMockResponse(text, selectedModel, agent = null) {
   else if (normalizedModelName.includes('llama')) response = `I’m responding as ${modelName}. This response is mocked locally for the prototype.`;
   else if (normalizedModelName.includes('mistral') || selectedModel?.provider === 'Local SLM') response = `I’m responding as ${modelName}. This is a local model mock response generated inside the prototype.`;
   else if (normalizedModelName.includes('gemini') && /\b(hello|hi|hey)\b/.test(input)) response = 'Hello! How can I help you today?';
-  else if (/\b(ui|design|spacing|layout|interface)\b/.test(input)) response = 'I can help you refine the UI, improve spacing, and make the prototype feel closer to LibreChat.';
+  else if (/\b(ui|design|spacing|layout|interface)\b/.test(input)) response = 'I can help you refine the UI, improve spacing, and make the prototype feel closer to Nexus.';
   else if (/\b(code|html|css|javascript|js)\b/.test(input)) response = 'Sure, I can help you structure the HTML, CSS, and JavaScript cleanly.';
   else response = `I’m responding as ${getAssistantDisplayName(selectedModel)}. This is a mock assistant response.`;
   if (agent?.category === 'Developer') response = `Developer perspective: ${response} I’ll prioritize clean structure, maintainability, and safe implementation.`;

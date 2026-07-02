@@ -18,7 +18,6 @@ export function toggleTheme() {
 export function loadSavedTheme() {
   const saved = storage.loadTheme();
   if (saved === 'light' || saved === 'dark') { applyTheme(saved); return; }
-  /* OS preference fallback — most users expect dark for LibreChat */
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   applyTheme(prefersDark ? 'dark' : 'light');
 }

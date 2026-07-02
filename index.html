@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0b0b0c">
-  <title>LibreChat — Agent Builder</title>
+  <title>Nexus</title>
   <base href="./">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -12,12 +12,11 @@
   <div class="app-shell">
     <nav class="icon-rail" aria-label="Main navigation">
       <div class="rail-group">
-        <button class="rail-button brand-mark" aria-label="LibreChat home" data-tooltip="Home">
+        <button class="rail-button brand-mark" aria-label="Nexus home" data-tooltip="Home">
           <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 2.5 24 8v12l-10 5.5L4 20V8l10-5.5Z"/><path d="m9 11 5-2.8 5 2.8v6l-5 2.8L9 17v-6Z"/></svg>
         </button>
         <button class="rail-button" id="newChatButton" aria-label="New chat" data-tooltip="New chat"><svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 3h5v5M10 14 21 3"/></svg></button>
-        <button class="rail-button" id="chatsNav" aria-label="Chats" data-tooltip="Chats"><svg viewBox="0 0 24 24"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9Z"/></svg></button>
-        <button class="rail-button active" id="agentsNav" aria-label="Agents" data-tooltip="Agents"><svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 0-4 4v2H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h1v3h10v-3h1a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-2V6a4 4 0 0 0-4-4Z"/><path d="M8 13h.01M16 13h.01M9 17h6"/></svg></button>
+        <button class="rail-button" id="chatsNav" aria-label="Chats" data-tooltip="Chats"><svg viewBox="0 0
         <button class="rail-button" id="skillsNav" aria-label="Skills" data-tooltip="Skills"><svg viewBox="0 0 24 24"><path d="M14 3a3 3 0 0 0-3 3v1H8a3 3 0 1 0 0 6h3v3a3 3 0 1 0 6 0v-3h1a3 3 0 1 0 0-6h-1V6a3 3 0 0 0-3-3Z"/></svg></button>
         <button class="rail-button" id="promptsNav" aria-label="Prompts" data-tooltip="Prompts"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg></button>
         <button class="rail-button" id="memoryNav" aria-label="Memory" data-tooltip="Memory"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-5 2.2A3.5 3.5 0 0 0 4 13a3 3 0 0 0 3 4.8A3 3 0 0 0 12 20V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 5 2.2A3.5 3.5 0 0 1 20 13a3 3 0 0 1-3 4.8A3 3 0 0 1 12 20V7a3 3 0 0 1 3-3Z"/><path d="M8 9h4M12 14H8M16 9h-4M12 14h4"/></svg></button>
@@ -215,7 +214,7 @@
             </div>
           </section>
         </div>
-        <div class="chat-top-actions"><button aria-label="Share chat"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/></svg></button><button class="libre-spark" aria-label="LibreChat menu"><span></span><span></span><span></span><span></span></button></div>
+        <div class="chat-top-actions"><button aria-label="Share chat"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/></svg></button><button class="libre-spark" aria-label="Nexus menu"><span></span><span></span><span></span><span></span></button></div>
       </header>
       <div class="chat-content" id="chatWelcome">
         <h2>Hi, how can I help you today?</h2>
@@ -231,13 +230,12 @@
               <button class="send-button" type="submit" aria-label="Send message"><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button>
             </div>
           </form>
-          <p class="footer-note">LibreChat can make mistakes. Check important info.</p>
         </div>
       </div>
       <section class="conversation-view" id="conversationView" aria-label="Conversation">
         <header class="conversation-heading"><div><span class="conversation-gemini model-avatar gemini" id="conversationModelIcon">✦</span><h1 id="conversationTitle"></h1></div><button id="conversationMenu" aria-label="Conversation options"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></header>
         <div class="conversation-scroll" id="conversationMessages"></div>
-        <div class="conversation-composer-wrap"><form class="conversation-composer" id="conversationComposer"><textarea id="conversationInput" placeholder="Message Gemini" aria-label="Conversation message"></textarea><div class="conversation-composer-actions"><div><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button><button type="button" aria-label="Message settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button></div><div><button type="button" aria-label="Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="conversation-send" id="conversationSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button></div></div></form><p>LibreChat v0.8.6-rc1 - Every AI for Everyone.</p></div>
+        <div class="conversation-composer-wrap"><form class="conversation-composer" id="conversationComposer"><textarea id="conversationInput" placeholder="Message Gemini" aria-label="Conversation message"></textarea><div class="conversation-composer-actions"><div><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 1 1-2.8-2.8l8.7-8.7"/></svg></button><button type="button" aria-label="Message settings"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg></button></div><div><button type="button" aria-label="Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="conversation-send" id="conversationSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="m5 12 14-8-4 16-3-6-7-2Z"/><path d="m12 14 7-10"/></svg></button></div></div></form><p>Nexus v0.8.6-rc1 - Every AI for Everyone.</p></div>
       </section>
       <section class="create-skill-view" id="createSkillView" aria-label="Create skill">
         <form class="create-skill-form" id="createSkillForm" novalidate>
